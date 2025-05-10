@@ -1,0 +1,6 @@
+soil_type,temperature,rainfall,month,crop
+Loamy,30,200,7,Rice
+Sandy,28,50,6,Millet
+Clay,22,150,8,Sugarcane
+Sandy,24,40,4,Groundnut
+Loamy,20,100,11,Wheat
