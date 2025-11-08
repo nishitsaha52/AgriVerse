@@ -3,7 +3,7 @@ const express = require('express');
 const axios = require('axios');
 const router = express.Router();
 
-const OPENWEATHER_API_KEY = 'b5e9294461820eb134103b5f6ca134f9'; // Replace it with real key
+const OPENWEATHER_API_KEY = '<Replace it with real key>';
 
 // GET /api/weather?city=Mumbai
 router.get('/', async (req, res) => {
