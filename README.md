@@ -18,8 +18,7 @@
 - **React frontend** for user interaction  
 - **Node.js backend** for weather APIs  
 - **S3 integration** for centralized model storage  
-- Fully **CORS-enabled REST APIs**  
-- Ready for **Docker / Kubernetes** deployment  
+- Fully **CORS-enabled REST APIs** 
 
 ---
 
