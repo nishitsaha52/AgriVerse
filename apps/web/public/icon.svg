@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="AgriVerse">
+  <rect width="512" height="512" rx="112" fill="#103d2a"/>
+  <path d="M254 395c-10-99 21-189 101-270" fill="none" stroke="#f4d98b" stroke-linecap="round" stroke-width="28"/>
+  <path d="M272 279c59 6 105-26 120-88-63-6-107 26-120 88Zm-30 45c-58 3-101-31-111-94 63-1 103 33 111 94Zm54-105c-45-31-57-82-28-134 49 33 59 82 28 134Z" fill="#7dcc96"/>
+</svg>

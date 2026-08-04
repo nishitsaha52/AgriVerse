@@ -1,0 +1,26 @@
+[Unit]
+Description=AgriVerse Next.js web application
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=agriverse
+Group=agriverse
+WorkingDirectory=/srv/agriverse/apps/web
+Environment=NODE_ENV=production
+Environment=PORT=3100
+Environment=HOSTNAME=127.0.0.1
+EnvironmentFile=/etc/agriverse/agriverse.env
+ExecStart=/usr/bin/node .next/standalone/apps/web/server.js
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=30
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/srv/agriverse
+
+[Install]
+WantedBy=multi-user.target

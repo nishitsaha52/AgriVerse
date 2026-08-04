@@ -1,0 +1,26 @@
+{
+  "name": "agriverse",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "pnpm@10.14.0",
+  "engines": {
+    "node": ">=22"
+  },
+  "pnpm": {
+    "overrides": {
+      "postcss": ">=8.5.18",
+      "sharp": ">=0.35.0"
+    }
+  },
+  "scripts": {
+    "dev": "pnpm --parallel --filter @agriverse/web dev",
+    "build": "pnpm --filter @agriverse/web build",
+    "lint": "pnpm --filter @agriverse/web lint",
+    "typecheck": "pnpm --filter @agriverse/web typecheck",
+    "test": "pnpm --filter @agriverse/web test",
+    "test:e2e": "pnpm --filter @agriverse/web test:e2e",
+    "generate:openapi": "uv run --project apps/api python apps/api/scripts/export_openapi.py",
+    "generate:api": "pnpm generate:openapi && pnpm --filter @agriverse/api-client generate",
+    "check:api-drift": "pnpm generate:api && git diff --exit-code -- apps/api/openapi.json packages/api-client/src/generated/schema.d.ts"
+  }
+}

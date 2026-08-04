@@ -1,0 +1,23 @@
+[Unit]
+Description=AgriVerse FastAPI service
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=agriverse
+Group=agriverse
+WorkingDirectory=/srv/agriverse/apps/api
+EnvironmentFile=/etc/agriverse/agriverse.env
+ExecStart=/srv/agriverse/apps/api/.venv/bin/uvicorn agriverse.main:app --host 127.0.0.1 --port 8100 --proxy-headers --forwarded-allow-ips=127.0.0.1
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=30
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/srv/agriverse
+
+[Install]
+WantedBy=multi-user.target

@@ -1,248 +1,119 @@
-# 🌾 AgriVerse – Smart Agriculture Assistant
+# AgriVerse
 
-**AgriVerse** is a full-stack AI-powered agriculture platform that helps farmers and researchers make intelligent decisions by analyzing key parameters like **plant diseases**, **pest attacks**, **soil fertility**, **crop suitability**, and **weather alerts** — all in one unified dashboard.
+AgriVerse is a production-oriented field intelligence application for farmers,
+field agents, and agronomists. It combines deterministic soil, crop, and weather
+logic with cited image diagnosis, organization-isolated retrieval, and human
+review.
 
----
+The legacy CRA, Express, and Flask prototype is retained locally under
+`recycle/legacy-prototype/` as recoverable migration history. It is excluded
+from version control; the supported runtime is the new monorepo.
 
-## 🚀 Features
+## Architecture
 
-### 🌱 AI-Powered Modules
-- **Plant Disease Detection** → Identify crop diseases from leaf images using CNN.  
-- **Pest Detection** → Detect common pests and their risk levels.  
-- **Soil Fertility Prediction** → Predict fertility category using NPK, pH, EC, etc.  
-- **Crop Recommendation** → Suggest ideal crop based on soil and climate conditions.  
-- **Weather Monitoring** → Get real-time weather alerts using OpenWeather API.
+| Path | Purpose |
+|---|---|
+| `apps/web` | Next.js 15 farmer dashboard, scan flow, agent chat, and staff review console |
+| `apps/api` | FastAPI REST API, ARQ worker, SQLAlchemy models, and Alembic migrations |
+| `packages/api-client` | TypeScript types generated from the committed OpenAPI contract |
+| `deploy` | OpenResty and systemd integration examples |
+| `docs` | Production and centralized-infrastructure runbooks |
 
-### 💡 Highlights
-- Modular **Flask-based microservices** for each AI model  
-- **React frontend** for user interaction  
-- **Node.js backend** for weather APIs  
-- **S3 integration** for centralized model storage  
-- Fully **CORS-enabled REST APIs** 
+Runtime dependencies are Postgres 17 with pgvector, Redis, a private
+S3-compatible MinIO bucket, an OpenAI-compatible endpoint (LiteLLM is
+supported), Voyage embeddings/reranking, and configured weather providers.
 
----
+## Implemented capabilities
 
-## 🧱 Architecture Overview
+- Organization-scoped farms and fields with PostgreSQL row-level security.
+- Phone/PIN farmer enrollment using single-use invitations, E.164 normalization,
+  Argon2 PIN hashing, progressive lockout, short access tokens, and rotating
+  refresh sessions.
+- Google and Microsoft staff OIDC with email-bound invitations and one-time
+  exchange codes.
+- Versioned deterministic fertility scoring, rice/wheat/tomato suitability, and
+  weather alerts.
+- Direct encrypted MinIO uploads, strict image validation/re-encoding, SHA-256
+  duplicate reuse, asynchronous diagnosis, citation controls, feedback, and an
+  agronomist confirmation queue.
+- Voyage image/text vectors, pgvector HNSW indexes, region/tier filtering,
+  reranking, confirmed-case retrieval, and licensed-document ingestion.
+- Field-authorized agronomist chat with soil, weather, scan, and document
+  context; multilingual answer configuration; prompt-injection screening.
+- Usage records, immutable mutation/AI audit events, quotas, rate limits,
+  idempotency records, privacy export/erasure, PWA shell, secure headers, and
+  generated OpenAPI types.
 
-```
-          ┌───────────────────────────┐
-          │        React UI           │
-          │ (frontend/src/components) │
-          └────────────┬──────────────┘
-                       │
-      ┌────────────────┼────────────────┐
-      │                │                │
-┌────────────┐  ┌────────────┐  ┌────────────┐
-│ Flask:5000 │  │ Flask:5001 │  │ Flask:5002 │
-│ Disease    │  │ Soil        │  │ Crop        │
-│ Prediction │  │ Fertility   │  │ Recommender │
-└────────────┘  └────────────┘  └────────────┘
-       │                │                │
-       └────────────────┼────────────────┘
-                        │
-               ┌────────▼────────┐
-               │ Flask:5004      │
-               │ Pest Detection  │
-               └────────┬────────┘
-                        │
-                ┌───────▼────────┐
-                │ Node.js:5003   │
-                │ Weather API    │
-                └────────────────┘
-```
+## Local development
 
----
+Requirements:
 
-## 🧠 Tech Stack
+- Node.js 22 and Corepack
+- pnpm 10.14
+- Python 3.12–3.14
+- uv
+- Postgres with pgvector, Redis, and MinIO
 
-| Layer | Technology | Description |
-|--------|-------------|-------------|
-| **Frontend** | React.js | User interface for farmers/researchers |
-| **Backend APIs** | Flask (Python) | AI model inference services |
-| **Weather Service** | Node.js + Express | Fetches real-time weather data |
-| **Machine Learning** | TensorFlow, Scikit-learn | Core ML models |
-| **Cloud Storage** | AWS S3 | Model file hosting |
-| **Deployment** | Docker / Kubernetes | Scalable deployment options |
-
----
-
-## ⚙️ Local Setup
-
-### 1️⃣ Clone the Repository
-```bash
-git clone https://github.com/<your-username>/AgriVerse.git
-cd AgriVerse
-```
-
-### 2️⃣ Backend Setup (Python Services)
-
-Each service (Flask app) runs independently.
-
-#### Common dependencies
-```bash
-pip install flask flask-cors tensorflow scikit-learn pillow boto3 numpy
-```
-
-#### Start services
-```bash
-# Terminal 1 - Plant Disease Detection
-python server/plant_disease_app.py   # runs on port 5000
-
-# Terminal 2 - Soil Fertility
-python server/soil_app.py            # runs on port 5001
-
-# Terminal 3 - Crop Recommendation
-python server/crop_recommendation_app.py   # runs on port 5002
-
-# Terminal 4 - Pest Detection
-python server/pest_app.py            # runs on port 5004
-```
-
-### 3️⃣ Weather Backend (Node.js)
+Create configuration:
 
 ```bash
-cd backend
-npm install
+cp .env.example .env
 ```
 
-Add your OpenWeather API key in `.env`:
-```
-OPENWEATHER_API_KEY=<your_api_key_here>
-PORT=5003
-```
-
-Then run:
-```bash
-node server.js
-```
-
-### 4️⃣ Frontend (React App)
+Install and migrate:
 
 ```bash
-cd frontend
-npm install
-npm start
+corepack pnpm install --frozen-lockfile
+uv sync --project apps/api --frozen
+uv run --directory apps/api alembic upgrade head
 ```
 
-The React app will start at **http://localhost:3000**
-
----
-
-## 🌍 API Endpoints
-
-| Service | Endpoint | Method | Port |
-|----------|-----------|--------|------|
-| **Plant Disease Detection** | `/predict` | `POST` (file) | 5000 |
-| **Soil Fertility Prediction** | `/soil-predict` | `POST` (JSON) | 5001 |
-| **Crop Recommendation** | `/recommend-crop` | `POST` (JSON) | 5002 |
-| **Pest Detection** | `/detect-pest` | `POST` (file) | 5004 |
-| **Weather Info** | `/api/weather?city=CityName` | `GET` | 5003 |
-
----
-
-## 📦 Model Management
-
-Models are stored in AWS S3 and automatically downloaded using:
+Start the API, worker, and web application in separate terminals:
 
 ```bash
-python server/download_models.py
+uv run --project apps/api uvicorn agriverse.main:app --app-dir apps/api --reload --port 8000
+uv run --project apps/api arq agriverse.workers.WorkerSettings
+corepack pnpm --filter @agriverse/web dev
 ```
 
-It fetches the following files:
-```
-crop_recommendation_model.pkl
-plant_pest_detection_model.h5
-plant_disease_prediction_model.h5
-soil_encoder.pkl
-soil_fertility_model.h5
-```
+The web app runs at `http://localhost:3000`; API documentation is available at
+`http://localhost:8000/docs` outside production.
 
----
+Bootstrap is allowed only on an empty database:
 
-## 📊 Example Predictions
-
-### 🌿 Plant Disease
-**Input:** Leaf image  
-**Output:**
-```json
-{
-  "predicted_class": "Leaf Blight",
-  "confidence": 94.5
-}
+```bash
+uv run --project apps/api python -m agriverse.cli bootstrap \
+  --name "Demo cooperative" --phone "+919876543210" --pin "123456" \
+  --email "admin@example.com"
 ```
 
-### 🌾 Crop Recommendation
-**Input:**
-```json
-{
-  "soil_type": "Clay",
-  "temperature": 28.5,
-  "rainfall": 140,
-  "month": 7
-}
-```
-**Output:**
-```json
-{
-  "recommended_crop": "Rice"
-}
+## Verification
+
+```bash
+uv run --project apps/api ruff check apps/api
+uv run --project apps/api mypy apps/api/agriverse
+uv run --project apps/api pytest apps/api/tests --cov=agriverse
+corepack pnpm lint
+corepack pnpm typecheck
+corepack pnpm test
+corepack pnpm build
+corepack pnpm test:e2e
 ```
 
----
+Regenerate and verify the API contract:
 
-## 🧩 Project Structure
-
-```
-AgriVerse/
-├── backend/                # Node.js Weather Service
-│   ├── routes/weather.js
-│   └── server.js
-│
-├── frontend/               # React UI
-│   ├── src/components/
-│   ├── App.js
-│   └── AppStyles.module.css
-│
-├── server/                 # Flask microservices
-│   ├── crop_recommendation_app.py
-│   ├── pest_app.py
-│   ├── soil_app.py
-│   ├── plant_disease_app.py
-│   └── download_models.py
-│
-└── models/ (optional local cache)
+```bash
+uv run --project apps/api python apps/api/scripts/export_openapi.py
+corepack pnpm --filter @agriverse/api-client generate
+git diff --exit-code -- apps/api/openapi.json packages/api-client/src/generated/schema.d.ts
 ```
 
----
+Production wiring for the already deployed centralized stack is documented in
+[docs/CENTRALIZED_INFRASTRUCTURE.md](docs/CENTRALIZED_INFRASTRUCTURE.md).
 
-## 🧩 Future Enhancements
-- 🌾 Integration with IoT soil/moisture sensors  
-- ☁️ Deploy models on AWS Lambda or Kubernetes  
-- 📈 Add historical data tracking using MongoDB/PostgreSQL  
-- 🗺️ Build a farm dashboard showing combined analytics  
-- 🧠 Add NLP-based farm advisory chatbot  
+## Security notes
 
----
-
-## 🤝 Contributing
-
-1. Fork this repository  
-2. Create your feature branch (`git checkout -b feature-name`)  
-3. Commit your changes (`git commit -m "Add new feature"`)  
-4. Push to branch (`git push origin feature-name`)  
-5. Open a Pull Request  
-
----
-
-## 💚 Acknowledgments
-
-- [TensorFlow](https://www.tensorflow.org/)  
-- [Scikit-learn](https://scikit-learn.org/)  
-- [Flask](https://flask.palletsprojects.com/)  
-- [React.js](https://reactjs.org/)  
-- [OpenWeather API](https://openweathermap.org/)  
-- [AWS S3](https://aws.amazon.com/s3/)  
-
----
-
-> **Developed with ❤️ by Nishit Saha**
+Never commit `.env` files, access keys, OAuth secrets, AI provider keys, or
+database credentials. Production startup rejects weak JWT/OAuth session
+secrets. Use a non-superuser Postgres runtime identity without `BYPASSRLS`, keep
+MinIO buckets private, and expose only OpenResty publicly.

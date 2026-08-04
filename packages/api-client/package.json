@@ -1,0 +1,12 @@
+{
+  "name": "@agriverse/api-client",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "generate": "openapi-typescript ../../apps/api/openapi.json -o src/generated/schema.d.ts"
+  },
+  "devDependencies": {
+    "openapi-typescript": "^7.9.0"
+  }
+}

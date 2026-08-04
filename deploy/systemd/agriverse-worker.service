@@ -1,0 +1,23 @@
+[Unit]
+Description=AgriVerse ARQ scan worker
+After=network-online.target agriverse-api.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=agriverse
+Group=agriverse
+WorkingDirectory=/srv/agriverse/apps/api
+EnvironmentFile=/etc/agriverse/agriverse.env
+ExecStart=/srv/agriverse/apps/api/.venv/bin/arq agriverse.workers.WorkerSettings
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=330
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/srv/agriverse
+
+[Install]
+WantedBy=multi-user.target

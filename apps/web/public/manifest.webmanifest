@@ -1,0 +1,17 @@
+{
+  "name": "AgriVerse",
+  "short_name": "AgriVerse",
+  "description": "Field intelligence for farmers and agronomists",
+  "start_url": "/dashboard",
+  "display": "standalone",
+  "background_color": "#f3f0e8",
+  "theme_color": "#103d2a",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

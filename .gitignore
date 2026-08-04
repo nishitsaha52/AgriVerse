@@ -11,6 +11,8 @@ node_modules/
 # production
 build/
 .next/
+playwright-report/
+test-results/
 dist/
 
 # misc
@@ -39,5 +41,7 @@ pnpm-debug.log*
 *.pkl
 
 # generated clients and local runtime data
-packages/api-client/src/generated/
 .arq/
+
+# recoverable local archive for superseded implementation files
+recycle/
