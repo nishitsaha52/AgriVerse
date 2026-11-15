@@ -33,6 +33,7 @@ class FakeSession:
         self.execute_values = list(execute_values)
         self.get_values = list(get_values)
         self.added: list[Any] = []
+        self.info: dict[str, Any] = {}
         self.commits = 0
         self.rollbacks = 0
 

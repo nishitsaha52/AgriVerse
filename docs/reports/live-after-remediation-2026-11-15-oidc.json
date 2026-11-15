@@ -1,0 +1,17 @@
+{
+  "service": "OIDC",
+  "check": "Interactive Keycloak sign-in",
+  "checked_utc": "2026-11-15T08:50:53.582056+00:00",
+  "user_confirmed_success": true,
+  "linked_keycloak_accounts": 0,
+  "active_keycloak_sessions": 0,
+  "status": "NEEDS_REVIEW",
+  "api_oauth_http_results": [],
+  "web_oauth_http_results": [
+    {
+      "method": "GET",
+      "path": "/api/oauth/start/keycloak",
+      "status": 307
+    }
+  ]
+}

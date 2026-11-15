@@ -29,6 +29,7 @@ import {
 } from "react";
 
 import { api, ApiError } from "@/lib/api";
+import { uploadScanImage } from "@/lib/scan-upload";
 import type {
   AgentAnswer,
   Farm,
@@ -375,12 +376,7 @@ function ScanPanel({ fieldId }: { fieldId: string }) {
         method: "POST",
         body: JSON.stringify({ filename: file.name, content_type: file.type }),
       });
-      const put = await fetch(created.upload_url, {
-        method: "PUT",
-        headers: created.required_headers,
-        body: file,
-      });
-      if (!put.ok) throw new Error("Object upload failed");
+      await uploadScanImage(created.upload_url, created.required_headers, file);
       await api(`scans/${created.scan_id}/complete`, {
         method: "POST",
         idempotency: true,

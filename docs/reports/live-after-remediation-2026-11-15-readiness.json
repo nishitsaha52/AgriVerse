@@ -1,0 +1,107 @@
+{
+  "run_id": "8f08f0d0-f0f4-4f47-9c86-92fdbbf94979",
+  "started_utc": "2026-11-15T08:42:22.181466+00:00",
+  "updated_utc": "2026-11-15T08:42:31.749366+00:00",
+  "results": [
+    {
+      "service": "OIDC",
+      "check": "google",
+      "status": "NOT_CONFIGURED"
+    },
+    {
+      "service": "OIDC",
+      "check": "microsoft",
+      "status": "NOT_CONFIGURED"
+    },
+    {
+      "service": "Redis",
+      "check": "authenticated PING",
+      "status": "PASS"
+    },
+    {
+      "service": "Redis",
+      "check": "SET/GET with TTL",
+      "status": "PASS"
+    },
+    {
+      "service": "Redis",
+      "check": "temporary-key cleanup",
+      "status": "PASS"
+    },
+    {
+      "service": "OIDC",
+      "check": "Keycloak Authlib discovery as configured",
+      "status": "PASS",
+      "seconds": 0.18,
+      "issuer_matches_configuration": true
+    },
+    {
+      "service": "OIDC",
+      "check": "Keycloak discovery (Windows trust, redirects)",
+      "status": "PASS",
+      "http_status": 200,
+      "issuer": "https://wisdom-dev.local/keycloak/realms/agriverse",
+      "issuer_matches_configuration": true,
+      "redirects": [],
+      "pkce_s256": true
+    },
+    {
+      "service": "Application",
+      "check": "API live endpoint",
+      "status": "PASS",
+      "seconds": 0.31,
+      "http_status": 200
+    },
+    {
+      "service": "OIDC",
+      "check": "Keycloak signing keys (Windows trust)",
+      "status": "PASS",
+      "seconds": 0.06,
+      "http_status": 200,
+      "signing_keys": 2
+    },
+    {
+      "service": "Application",
+      "check": "Web live endpoint",
+      "status": "PASS",
+      "seconds": 0.52,
+      "http_status": 200
+    },
+    {
+      "service": "OIDC",
+      "check": "Keycloak authorization and callback registration",
+      "status": "PASS",
+      "seconds": 1.21,
+      "http_status": 200,
+      "login_form_present": true,
+      "client_id": "agriverse-web",
+      "redirect_uri": "http://localhost:8000/api/v1/auth/staff/oauth/keycloak/callback",
+      "scope": "client/redirect acceptance only; no user authentication or token exchange"
+    },
+    {
+      "service": "OIDC",
+      "check": "Keycloak complete sign-in and session",
+      "status": "BLOCKED",
+      "reason": "No interactive sign-in or token/session exchange was completed. Review the application, issuer and TLS checks before sign-in."
+    },
+    {
+      "service": "Database",
+      "check": "authentication and read-only query",
+      "status": "PASS",
+      "probe": 1,
+      "database": "agriverse",
+      "rolsuper": false,
+      "rolbypassrls": false
+    },
+    {
+      "service": "Database",
+      "check": "retrieval schema and migration",
+      "status": "PASS",
+      "pgvector": "0.8.7",
+      "revisions": [
+        "20261115_0002"
+      ],
+      "missing_columns": []
+    }
+  ]
+}

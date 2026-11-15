@@ -8,7 +8,7 @@ Rebuild the non-functional CRA/Express/Flask prototype as a production applicati
 - `apps/api`: FastAPI, Pydantic v2, async persistence, deterministic agronomy, and AI/retrieval services.
 - `packages/api-client`: generated TypeScript client from FastAPI OpenAPI.
 - Postgres 17 + pgvector, Redis 7, and MinIO AIStor as the only platform-operated runtime services.
-- OpenAI for vision/agent workloads and Voyage for embeddings/reranking.
+- Direct OpenAI for all AI workloads, with Gemini fallback for generation, embeddings, and reranking; Keycloak is available for development OIDC.
 
 The implementation covers the complete 10–13 week application scope. Billing, deployment, containers, infrastructure, observability infrastructure, and credential provisioning remain out of scope.
 
@@ -44,7 +44,8 @@ The implementation covers the complete 10–13 week application scope. Billing, 
 - Implement MinIO per-organization object prefixes and presigned PUT/GET services.
 - Spike BullMQ Python against Redis for priorities, retries, delayed work, deduplication, reconnect recovery, and graceful shutdown. BullMQ’s official documentation still describes Python support as [experimental](https://docs.bullmq.io/python/introduction); automatically adopt ARQ if any required behavior fails.
 - Implement RFC 7807 errors, request IDs, JSON logs, health/readiness endpoints, and OpenAPI-to-TypeScript generation with a drift check.
-- Implement phone+PIN farmer auth and configurable Google/Microsoft staff OAuth:
+- Implement phone+PIN farmer/staff auth in every environment and optional Keycloak/Google/Microsoft staff OIDC:
+  - `STAFF_PIN_LOGIN_ENABLED` controls staff PIN access independently of `APP_ENV`; OIDC is optional in production.
   - Six-digit-or-longer PIN, Argon2 hashing, E.164 normalization, and lockout after five failures.
   - Fifteen-minute access tokens; rotating 60-day farmer and 7-day staff refresh sessions.
   - Self-registration requires a single-use, expiring organization invite code.
@@ -59,7 +60,7 @@ The implementation covers the complete 10–13 week application scope. Billing, 
   - Rice, wheat, and tomato suitability ranking.
   - Deterministic weather-alert thresholds.
 - Cite the agronomic source for every range, weight, and threshold. Persist calculated results with `algorithm_version` so historical recommendations remain auditable.
-- Implement `WeatherProvider` with IMD as primary and Open-Meteo as fallback, normalized to one internal DTO.
+- Use Open-Meteo as the weather provider, normalized to the internal forecast DTO with a ten-minute Redis cache and application-generated alerts.
 - Cache current conditions for 10 minutes and forecasts for a longer provider-appropriate period, keyed by district/agro-climatic zone.
 - Deliver farmer dashboard, field setup, soil-test form, recommendation view, and weather alerts.
 - Ship English, Hindi, Bengali, Marathi, Telugu, and Tamil UI chrome; support approximately twelve configured languages for generated advice.
@@ -83,10 +84,7 @@ The implementation covers the complete 10–13 week application scope. Billing, 
 
 ## Phase 4 — Embeddings, Corpus, and Human Review
 
-- Use 1024-dimensional vectors throughout. Adopt the current successors to the documents’ proposed Voyage models:
-  - `voyage-multimodal-3.5` for scan images.
-  - `voyage-4-large` for document and soil-summary text.
-  - Both support a 1024 default dimension according to the official [multimodal](https://docs.voyageai.com/docs/multimodal-embeddings) and [text embedding](https://docs.voyageai.com/docs/embeddings) documentation.
+- Use 1024-dimensional provider-specific text vectors: `text-embedding-3-small` for OpenAI and `gemini-embedding-001` for Gemini. Describe scan images through the vision provider before embedding the descriptions. Keep each provider/model in its own space and prepare both corpora when both keys are configured.
 - Add HNSW cosine indexes, organization indexes, and RLS. Over-fetch candidates before tenant filtering and truncation to prevent filtered ANN searches from under-returning.
 - Permit `confirmed_dx IS NOT NULL` as the sole membership rule for similar-case retrieval.
 - Build the prioritized agronomist queue using low confidence, no close neighbors, diagnosis/neighbor disagreement, negative feedback, and Tier 1 dosage usage.
@@ -145,5 +143,5 @@ The implementation covers the complete 10–13 week application scope. Billing, 
 - Rice, wheat, and tomato are the only initial crop-specific diagnostic corpus; cotton is deferred.
 - Pan-India support requires district/agro-climatic-zone retrieval filtering from the first release.
 - An agronomist role will review roughly 5–10% of scans; without staffing, confirmed-image retrieval remains disabled and the product operates as a cited advisory system.
-- AI and Voyage model IDs remain configuration values, but production uses immutable snapshots selected by the committed evaluation suite.
+- Generation and embedding model IDs remain configuration values, but production uses immutable snapshots selected by the committed evaluation suite.
 - Completion means all phase exit milestones and CI gates pass, the legacy services are no longer runtime dependencies, and the application operates only against the pinned Postgres, Redis, and MinIO interfaces plus configured AI/weather providers.

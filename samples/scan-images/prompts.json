@@ -1,0 +1,33 @@
+{
+  "generator": "Built-in image_gen tool",
+  "synthetic": true,
+  "crop": "rice",
+  "purpose": "Manual upload and scan-flow testing; labels describe requested appearances, not validated diagnoses.",
+  "common_prompt": "Use case: photorealistic-natural. Asset type: synthetic plant-scanning test input for AgriVerse. Generate ONE separate square, realistic handheld phone photograph of rice (Oryza sativa) leaves in an outdoor paddy. A prominent leaf occupies most of the frame, sharply focused with detailed parallel veins and natural texture; background rice and soil softly blurred. Soft natural daylight, realistic field colors, no people. This is synthetic test imagery, not a scientific reference. NO text, labels, frames, grids, collage, watermark, infographic, or interface. Opaque natural background. ",
+  "images": [
+    {
+      "file": "set-1-healthy/healthy-01.png",
+      "prompt": "Use case: photorealistic-natural. Asset type: synthetic plant-scanning test input for AgriVerse. Generate ONE separate square, realistic handheld phone photograph of rice (Oryza sativa) leaves in an outdoor paddy. A prominent leaf occupies most of the frame, sharply focused with detailed parallel veins and natural texture; background rice and soil softly blurred. Soft natural daylight, realistic field colors, no people. This is synthetic test imagery, not a scientific reference. NO text, labels, frames, grids, collage, watermark, infographic, or interface. Opaque natural background. Healthy mature green rice blade, intact margins, even green color, clean natural surface, no spots or chewing. Diagonal blade across frame, soft paddy background."
+    },
+    {
+      "file": "set-1-healthy/healthy-02.png",
+      "prompt": "Use case: photorealistic-natural. Asset type: synthetic plant-scanning test input for AgriVerse. Generate ONE separate square, realistic handheld phone photograph of rice (Oryza sativa) leaves in an outdoor paddy. A prominent leaf occupies most of the frame, sharply focused with detailed parallel veins and natural texture; background rice and soil softly blurred. Soft natural daylight, realistic field colors, no people. This is synthetic test imagery, not a scientific reference. NO text, labels, frames, grids, collage, watermark, infographic, or interface. Opaque natural background. Healthy young rice leaves growing from a plant, vivid natural green narrow blades, intact tips and margins, no obvious discoloration or pest damage. Close side view, one central blade in focus."
+    },
+    {
+      "file": "set-2-disease-like/disease-like-01.png",
+      "prompt": "Use case: photorealistic-natural. Asset type: synthetic plant-scanning test input for AgriVerse. Generate ONE separate square, realistic handheld phone photograph of rice (Oryza sativa) leaves in an outdoor paddy. A prominent leaf occupies most of the frame, sharply focused with detailed parallel veins and natural texture; background rice and soil softly blurred. Soft natural daylight, realistic field colors, no people. This is synthetic test imagery, not a scientific reference. NO text, labels, frames, grids, collage, watermark, infographic, or interface. Opaque natural background. Rice blade with several visible oval brown lesions with pale gray centers and darker brown margins, some localized yellowing. Clear disease-like symptoms but do not imply a lab-confirmed diagnosis. Close-up single blade, distinct lesions in focus."
+    },
+    {
+      "file": "set-2-disease-like/disease-like-02.png",
+      "prompt": "Use case: photorealistic-natural. Asset type: synthetic plant-scanning test input for AgriVerse. Generate ONE separate square, realistic handheld phone photograph of rice (Oryza sativa) leaves in an outdoor paddy. A prominent leaf occupies most of the frame, sharply focused with detailed parallel veins and natural texture; background rice and soil softly blurred. Soft natural daylight, realistic field colors, no people. This is synthetic test imagery, not a scientific reference. NO text, labels, frames, grids, collage, watermark, infographic, or interface. Opaque natural background. Rice leaves showing brown elongated lesions and yellowed patches, one moderately affected central leaf and healthy green leaves behind it. Symptoms clearly visible and organically irregular, realistic damaged plant tissue, not decorative spots."
+    },
+    {
+      "file": "set-3-pest-like/pest-like-01.png",
+      "prompt": "Use case: photorealistic-natural. Asset type: synthetic plant-scanning test input for AgriVerse. Generate ONE separate square, realistic handheld phone photograph of rice (Oryza sativa) leaves in an outdoor paddy. A prominent leaf occupies most of the frame, sharply focused with detailed parallel veins and natural texture; background rice and soil softly blurred. Soft natural daylight, realistic field colors, no people. This is synthetic test imagery, not a scientific reference. NO text, labels, frames, grids, collage, watermark, infographic, or interface. Opaque natural background. Rice leaf showing irregular chewing holes and missing small segments along the edge; a small green caterpillar on the leaf, visible but the leaf remains the main subject. Realistic agricultural pest-like damage."
+    },
+    {
+      "file": "set-3-pest-like/pest-like-02.png",
+      "prompt": "Use case: photorealistic-natural. Asset type: synthetic plant-scanning test input for AgriVerse. Generate ONE separate square, realistic handheld phone photograph of rice (Oryza sativa) leaves in an outdoor paddy. A prominent leaf occupies most of the frame, sharply focused with detailed parallel veins and natural texture; background rice and soil softly blurred. Soft natural daylight, realistic field colors, no people. This is synthetic test imagery, not a scientific reference. NO text, labels, frames, grids, collage, watermark, infographic, or interface. Opaque natural background. A rice blade with a longitudinal folded section, narrow whitish scraped feeding streaks, and small irregular chewed areas. Macro-like phone close-up of damaged plant tissue, natural green field background. Pest-like signs without a confirmed species diagnosis."
+    }
+  ]
+}

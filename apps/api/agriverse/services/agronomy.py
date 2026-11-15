@@ -14,9 +14,6 @@ TNAU_RICE_URL = "https://www.agritech.tnau.ac.in/org_farm/orgfarm_prac_agri_padd
 TNAU_WHEAT_URL = "https://www.agritech.tnau.ac.in/agriculture/agri_faqs_cropproduction.html"
 TNAU_TOMATO_URL = "https://agritech.tnau.ac.in/horticulture/horti_vegetables_tomato_Soil.html"
 FERTILITY_SOURCES = [SOIL_HEALTH_MANUAL_URL, TNAU_SOIL_RATING_URL]
-IMD_WARNING_CRITERIA_URL = (
-    "https://mausam.imd.gov.in/imd_latest/contents/Met_Monograph_Cold_Heat_Waves.pdf"
-)
 SOURCE_NOTE = (
     "Status thresholds follow the Government of India Soil Health manual and TNAU soil "
     "rating chart. Weights are the transparent AgriVerse v1 index policy; the index is "
@@ -155,6 +152,7 @@ def rank_crop_suitability(
 
 
 def evaluate_weather_alerts(point: WeatherPoint) -> list[WeatherAlertRead]:
+    """Apply AgriVerse alert thresholds to provider conditions."""
     alerts: list[WeatherAlertRead] = []
     if point.temperature_c >= 40:
         alerts.append(
@@ -162,7 +160,6 @@ def evaluate_weather_alerts(point: WeatherPoint) -> list[WeatherAlertRead]:
                 alert_type="extreme_heat",
                 severity="critical",
                 message="Extreme heat risk. Avoid midday field work and review irrigation.",
-                source_url=IMD_WARNING_CRITERIA_URL,
             )
         )
     elif point.temperature_c >= 35:
@@ -171,7 +168,6 @@ def evaluate_weather_alerts(point: WeatherPoint) -> list[WeatherAlertRead]:
                 alert_type="heat",
                 severity="warning",
                 message="High temperature may increase crop water stress.",
-                source_url=IMD_WARNING_CRITERIA_URL,
             )
         )
     if point.precipitation_mm >= 64.5:
@@ -180,7 +176,6 @@ def evaluate_weather_alerts(point: WeatherPoint) -> list[WeatherAlertRead]:
                 alert_type="heavy_rain",
                 severity="critical",
                 message="Heavy rainfall may cause waterlogging and disease pressure.",
-                source_url=IMD_WARNING_CRITERIA_URL,
             )
         )
     elif point.precipitation_mm >= 20:
@@ -189,7 +184,6 @@ def evaluate_weather_alerts(point: WeatherPoint) -> list[WeatherAlertRead]:
                 alert_type="rain",
                 severity="warning",
                 message="Significant rainfall expected; review spraying and drainage plans.",
-                source_url=IMD_WARNING_CRITERIA_URL,
             )
         )
     if point.wind_speed_kph >= 40:
@@ -198,7 +192,6 @@ def evaluate_weather_alerts(point: WeatherPoint) -> list[WeatherAlertRead]:
                 alert_type="high_wind",
                 severity="warning",
                 message="High winds make spraying unsafe and may damage unsupported crops.",
-                source_url=IMD_WARNING_CRITERIA_URL,
             )
         )
     return alerts

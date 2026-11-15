@@ -1,12 +1,13 @@
 import json
 from contextlib import suppress
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta, timezone
 
 import httpx
 from redis.asyncio import Redis
 from redis.exceptions import RedisError
 
 from agriverse.config import get_settings
+from agriverse.http import ssl_context
 from agriverse.schemas import ForecastRead, WeatherPoint
 from agriverse.services.agronomy import evaluate_weather_alerts
 
@@ -27,15 +28,20 @@ class OpenMeteoProvider:
             "forecast_days": 3,
             "timezone": "auto",
         }
-        async with httpx.AsyncClient(timeout=12) as client:
+        async with httpx.AsyncClient(
+            timeout=12, verify=ssl_context(settings.tls_ca_bundle)
+        ) as client:
             response = await client.get(f"{settings.open_meteo_base_url}/forecast", params=params)
             response.raise_for_status()
-        current = response.json().get("current")
+        payload = response.json()
+        local_timezone = timezone(timedelta(seconds=int(payload.get("utc_offset_seconds", 0))))
+        current = payload.get("current")
         if not isinstance(current, dict):
             raise WeatherUnavailableError("Weather provider returned no current conditions")
         observed_at = datetime.fromisoformat(str(current["time"]))
         if observed_at.tzinfo is None:
-            observed_at = observed_at.replace(tzinfo=UTC)
+            observed_at = observed_at.replace(tzinfo=local_timezone)
+        observed_at = observed_at.astimezone(UTC)
         point = WeatherPoint(
             observed_at=observed_at,
             temperature_c=float(current["temperature_2m"]),
@@ -43,7 +49,7 @@ class OpenMeteoProvider:
             precipitation_mm=float(current["precipitation"]),
             wind_speed_kph=float(current["wind_speed_10m"]),
         )
-        hourly = response.json().get("hourly", {})
+        hourly = payload.get("hourly", {})
         forecast: list[WeatherPoint] = []
         if isinstance(hourly, dict):
             times = hourly.get("time", [])
@@ -55,7 +61,8 @@ class OpenMeteoProvider:
                 try:
                     forecast_at = datetime.fromisoformat(str(raw_time))
                     if forecast_at.tzinfo is None:
-                        forecast_at = forecast_at.replace(tzinfo=UTC)
+                        forecast_at = forecast_at.replace(tzinfo=local_timezone)
+                    forecast_at = forecast_at.astimezone(UTC)
                     forecast.append(
                         WeatherPoint(
                             observed_at=forecast_at,
@@ -76,33 +83,9 @@ class OpenMeteoProvider:
         )
 
 
-class IMDProvider:
-    """Adapter for a normalized IMD gateway managed by the platform team."""
-
-    async def current(self, latitude: float, longitude: float) -> ForecastRead:
-        if not settings.imd_api_base_url:
-            raise WeatherUnavailableError("IMD gateway is not configured")
-        headers = {}
-        if settings.imd_api_key.get_secret_value():
-            headers["Authorization"] = f"Bearer {settings.imd_api_key.get_secret_value()}"
-        async with httpx.AsyncClient(timeout=8) as client:
-            response = await client.get(
-                f"{settings.imd_api_base_url.rstrip('/')}/forecast",
-                params={"latitude": latitude, "longitude": longitude},
-                headers=headers,
-            )
-            response.raise_for_status()
-        payload = response.json()
-        if not isinstance(payload, dict):
-            raise WeatherUnavailableError("IMD gateway returned an invalid response")
-        forecast = ForecastRead.model_validate(payload)
-        return forecast.model_copy(update={"source": "imd", "fetched_at": datetime.now(UTC)})
-
-
 class CachedWeatherService:
     def __init__(self) -> None:
-        self._imd = IMDProvider()
-        self._fallback = OpenMeteoProvider()
+        self._provider = OpenMeteoProvider()
         self._redis = Redis.from_url(settings.redis_url, decode_responses=True)
 
     async def close(self) -> None:
@@ -115,17 +98,14 @@ class CachedWeatherService:
         latitude: float,
         longitude: float,
     ) -> ForecastRead:
-        cache_key = f"agriverse:weather:{cache_region.casefold()}"
+        cache_key = f"agriverse:weather:open-meteo:v2:{cache_region.casefold()}"
         try:
             cached = await self._redis.get(cache_key)
         except RedisError:
             cached = None
         if cached:
             return ForecastRead.model_validate_json(cached)
-        try:
-            forecast = await self._imd.current(latitude, longitude)
-        except (httpx.HTTPError, ValueError, WeatherUnavailableError):
-            forecast = await self._fallback.current(latitude, longitude)
+        forecast = await self._provider.current(latitude, longitude)
         with suppress(RedisError):
             await self._redis.set(cache_key, json.dumps(forecast.model_dump(mode="json")), ex=600)
         return forecast

@@ -42,7 +42,7 @@ def get_queue(request: Request) -> ArqRedis:
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Background queue unavailable",
         )
-    return queue
+    return cast(ArqRedis, queue)
 
 
 @router.post(
@@ -82,10 +82,7 @@ async def create_scan(
         upload_url=upload_url,
         object_key=object_key,
         expires_in=settings.presigned_url_seconds,
-        required_headers={
-            "Content-Type": payload.content_type,
-            "x-amz-server-side-encryption": "AES256",
-        },
+        required_headers=storage.upload_headers(payload.content_type),
     )
 
 

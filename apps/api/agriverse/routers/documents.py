@@ -81,7 +81,7 @@ async def ingest_document(
             for content in semantically_chunk(source_section.content)
         )
     texts = [content for _, _, content in pending_chunks]
-    embeddings = await embedding_service.embed_texts(texts)
+    embeddings = await embedding_service.embed_documents(texts)
     if len(embeddings) != len(pending_chunks):
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
@@ -110,7 +110,7 @@ async def ingest_document(
                 page_number=page_number,
                 section=section,
                 content=content,
-                embedding=embedding,
+                **embedding.columns(),
             )
         )
     record_audit(

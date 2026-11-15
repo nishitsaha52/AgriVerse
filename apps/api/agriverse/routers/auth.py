@@ -1,6 +1,7 @@
+import hashlib
 import uuid
 from datetime import UTC, datetime, timedelta
-from typing import Any
+from typing import Any, cast
 from urllib.parse import quote
 
 from authlib.integrations.starlette_client import OAuth, OAuthError  # type: ignore[import-untyped]
@@ -11,9 +12,10 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from agriverse.audit import record_audit
-from agriverse.config import get_settings
+from agriverse.config import Settings, get_settings
 from agriverse.db import get_db
 from agriverse.dependencies import require_permissions, set_tenant_context
+from agriverse.http import ssl_context
 from agriverse.models import (
     Membership,
     OrganizationInvite,
@@ -47,25 +49,58 @@ from agriverse.services.oauth_exchange import oauth_exchange_store
 router = APIRouter(prefix="/auth", tags=["auth"])
 STAFF_ROLES = {"field_agent", "agronomist", "org_admin", "support", "super_admin"}
 settings = get_settings()
-oauth = OAuth()
-if settings.google_client_id:
-    oauth.register(
-        name="google",
-        client_id=settings.google_client_id,
-        client_secret=settings.google_client_secret.get_secret_value(),
-        server_metadata_url="https://accounts.google.com/.well-known/openid-configuration",
-        client_kwargs={"scope": "openid email profile"},
-    )
-if settings.microsoft_client_id:
-    oauth.register(
-        name="microsoft",
-        client_id=settings.microsoft_client_id,
-        client_secret=settings.microsoft_client_secret.get_secret_value(),
-        server_metadata_url=(
-            "https://login.microsoftonline.com/common/v2.0/.well-known/openid-configuration"
-        ),
-        client_kwargs={"scope": "openid email profile"},
-    )
+OIDC_PROVIDERS = {"google", "microsoft", "keycloak"}
+
+
+def create_oauth_clients(config: Settings) -> OAuth:
+    oauth = OAuth()
+    if config.keycloak_issuer_url and config.keycloak_client_id:
+        oauth.register(
+            name="keycloak",
+            client_id=config.keycloak_client_id,
+            client_secret=config.keycloak_client_secret.get_secret_value() or None,
+            server_metadata_url=(
+                f"{config.keycloak_issuer_url.rstrip('/')}/.well-known/openid-configuration"
+            ),
+            client_kwargs={
+                "scope": "openid email profile",
+                "code_challenge_method": "S256",
+                "verify": ssl_context(config.tls_ca_bundle),
+                "token_endpoint_auth_method": (
+                    "client_secret_basic"
+                    if config.keycloak_client_secret.get_secret_value()
+                    else "none"
+                ),
+            },
+        )
+    if config.google_client_id:
+        oauth.register(
+            name="google",
+            client_id=config.google_client_id,
+            client_secret=config.google_client_secret.get_secret_value(),
+            server_metadata_url="https://accounts.google.com/.well-known/openid-configuration",
+            client_kwargs={
+                "scope": "openid email profile",
+                "verify": ssl_context(config.tls_ca_bundle),
+            },
+        )
+    if config.microsoft_client_id:
+        oauth.register(
+            name="microsoft",
+            client_id=config.microsoft_client_id,
+            client_secret=config.microsoft_client_secret.get_secret_value(),
+            server_metadata_url=(
+                "https://login.microsoftonline.com/common/v2.0/.well-known/openid-configuration"
+            ),
+            client_kwargs={
+                "scope": "openid email profile",
+                "verify": ssl_context(config.tls_ca_bundle),
+            },
+        )
+    return oauth
+
+
+oauth = create_oauth_clients(settings)
 
 
 async def issue_token_pair(
@@ -215,13 +250,13 @@ async def login_farmer(
     return token_pair
 
 
-@router.post("/staff/pin-login", response_model=TokenPair, include_in_schema=False)
-async def development_staff_pin_login(
+@router.post("/staff/pin-login", response_model=TokenPair)
+async def staff_pin_login(
     payload: FarmerLogin,
     db: AsyncSession = Depends(get_db),
 ) -> TokenPair:
-    """Bootstrap-only login; production staff authentication must use OAuth."""
-    if settings.app_env == "production":
+    """Sign in staff with phone/PIN and organization membership in any environment."""
+    if not settings.staff_pin_login_enabled:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
     try:
         phone = normalize_phone(payload.phone)
@@ -230,7 +265,17 @@ async def development_staff_pin_login(
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=str(exc)
         ) from exc
     user = await db.scalar(select(User).where(User.phone_e164 == phone))
-    if user is None or user.pin_hash is None or not verify_pin(payload.pin, user.pin_hash):
+    if user is None or user.pin_hash is None or not user.is_active:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid login")
+    now = datetime.now(UTC)
+    if user.locked_until is not None and user.locked_until > now:
+        raise HTTPException(status_code=status.HTTP_423_LOCKED, detail="Account temporarily locked")
+    if not verify_pin(payload.pin, user.pin_hash):
+        user.failed_login_attempts += 1
+        if user.failed_login_attempts >= 5:
+            delay_minutes = min(60, 2 ** (user.failed_login_attempts - 5))
+            user.locked_until = now + timedelta(minutes=delay_minutes)
+        await db.commit()
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid login")
     await set_tenant_context(db, payload.organization_id)
     membership = await db.scalar(
@@ -242,6 +287,8 @@ async def development_staff_pin_login(
     )
     if membership is None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid login")
+    user.failed_login_attempts = 0
+    user.locked_until = None
     token_pair = await issue_token_pair(
         db,
         user_id=user.id,
@@ -259,8 +306,8 @@ async def start_staff_oauth(
     organization_id: uuid.UUID,
     invite_code: str | None = None,
 ) -> RedirectResponse:
-    client = oauth.create_client(provider)
-    if client is None or provider not in {"google", "microsoft"}:
+    client = oauth.create_client(provider) if provider in OIDC_PROVIDERS else None
+    if client is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="OAuth provider is not configured",
@@ -271,7 +318,7 @@ async def start_staff_oauth(
         "invite_code": invite_code,
     }
     redirect_uri = f"{settings.oauth_callback_base_url}/auth/staff/oauth/{provider}/callback"
-    return await client.authorize_redirect(request, redirect_uri)
+    return cast(RedirectResponse, await client.authorize_redirect(request, redirect_uri))
 
 
 @router.get("/staff/oauth/{provider}/callback")
@@ -282,7 +329,8 @@ async def complete_staff_oauth(
 ) -> RedirectResponse:
     context = request.session.pop("staff_oauth", None)
     if (
-        not isinstance(context, dict)
+        provider not in OIDC_PROVIDERS
+        or not isinstance(context, dict)
         or context.get("provider") != provider
         or not isinstance(context.get("organization_id"), str)
     ):
@@ -304,18 +352,30 @@ async def complete_staff_oauth(
             detail="The identity provider did not return an OpenID identity",
         )
     subject = userinfo.get("sub")
-    email_value = userinfo.get("email") or userinfo.get("preferred_username")
+    email_value = userinfo.get("email") or (
+        userinfo.get("preferred_username") if provider != "keycloak" else None
+    )
     if not isinstance(subject, str) or not isinstance(email_value, str):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="A verified email identity is required",
         )
-    if userinfo.get("email_verified") is False:
+    if userinfo.get("email_verified") is False or (
+        provider == "keycloak" and userinfo.get("email_verified") is not True
+    ):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="The identity provider email is not verified",
         )
     email = email_value.strip().lower()
+    if provider == "keycloak" and ("@" not in email or not subject):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid email identity"
+        )
+    identity = f"{provider}:{subject}"
+    if provider == "keycloak":
+        issuer = hashlib.sha256(settings.keycloak_issuer_url.rstrip("/").encode()).hexdigest()
+        identity = f"keycloak:{issuer}:{subject}"
     organization_id = uuid.UUID(context["organization_id"])
     await set_tenant_context(db, organization_id)
     user = await db.scalar(select(User).where(User.email == email))
@@ -346,7 +406,7 @@ async def complete_staff_oauth(
         user = User(
             provider=provider,
             email=email,
-            oauth_subject=f"{provider}:{subject}",
+            oauth_subject=identity,
         )
         db.add(user)
         await db.flush()
@@ -373,7 +433,7 @@ async def complete_staff_oauth(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Staff membership is unavailable",
             )
-        expected_subject = f"{provider}:{subject}"
+        expected_subject = identity
         if user.oauth_subject not in {None, expected_subject}:
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
@@ -469,6 +529,9 @@ async def refresh_tokens(
         organization_id=organization_id,
         role=membership.role,
     )
+    # The self-referencing FK is immediate. Persist the replacement before
+    # pointing the previous session at its ID; both writes stay in this transaction.
+    await db.flush()
     replacement_claims = decode_token(token_pair.refresh_token, "refresh")
     session.replaced_by_id = uuid.UUID(replacement_claims["jti"])
     await db.commit()

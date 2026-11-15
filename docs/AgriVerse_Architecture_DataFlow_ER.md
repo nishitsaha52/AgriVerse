@@ -1,6 +1,6 @@
 per # AgriVerse — Production-Grade Architecture, Data Flow & ER Diagram
 
-Companion document to the AgriVerse Production Application Audit & Build Plan. Reflects the resolved decisions: FastAPI + Pydantic, Postgres 17 + pgvector, MinIO AIStor, Redis + BullMQ, phone+PIN farmer auth, OAuth staff auth, tiered agronomy corpus, and agronomist-gated retrieval.
+Companion document to the AgriVerse Production Application Audit & Build Plan. Reflects the resolved decisions: FastAPI + Pydantic, Postgres 17 + pgvector, MinIO AIStor, Redis + ARQ, phone+PIN farmer and staff auth, optional staff OIDC, tiered agronomy corpus, and agronomist-gated retrieval.
 
 ---
 
@@ -30,10 +30,10 @@ graph TB
       SCANM[scans: upload, diagnosis]
       RETM[retrieval: embed, search, rerank]
       AGENTM[agronomist agent: tools]
-      WXM[weather: IMD/Open-Meteo provider]
+      WXM[weather: Open-Meteo provider]
       ADMM[admin: review queue, audit]
     end
-    WORKERS[BullMQ workers<br/>Python]
+    WORKERS[ARQ workers<br/>Python]
   end
 
   subgraph Data["Pinned Runtime — platform-operated"]
@@ -43,15 +43,13 @@ graph TB
   end
 
   subgraph AI["External AI APIs — credentials provisioned"]
-    OPENAI[OpenAI<br/>vision · agent tool-calling]
-    CLAUDE[Claude — fallback]
+    OPENAI[OpenAI<br/>vision, agent, embeddings, reranking]
     GEMINI[Gemini — fallback / cheap gate]
-    VOYAGE[Voyage<br/>embeddings + reranker]
+    RETRIEVAL[OpenAI primary / Gemini fallback<br/>separate text vectors + LLM reranking]
   end
 
   subgraph Ext["External data — free, licensed"]
-    IMD[IMD / data.gov.in<br/>GODL-India]
-    OM[Open-Meteo<br/>fallback forecast]
+    OM[Open-Meteo<br/>current conditions and forecasts]
   end
 
   subgraph Out["Delivered separately by platform team"]
@@ -72,17 +70,15 @@ graph TB
   SCANM --> MINIO
   SCANM -->|enqueue| WORKERS
   WORKERS --> REDIS
-  WORKERS --> VOYAGE
+  WORKERS --> RETRIEVAL
   WORKERS --> PG
 
   SCANM --> OPENAI
   AGENTM --> OPENAI
-  RETM --> VOYAGE
-  API -.fallback.-> CLAUDE
+  RETM --> RETRIEVAL
   API -.fallback.-> GEMINI
 
-  WXM --> IMD
-  WXM -.fallback.-> OM
+  WXM --> OM
 
   CRED -.provisions.-> AI
   IAC -.hosts.-> App
@@ -160,8 +156,8 @@ sequenceDiagram
     actor F as Farmer (PWA)
     participant API as FastAPI
     participant MO as MinIO
-    participant W as BullMQ Worker
-    participant VO as Voyage
+    participant W as ARQ Worker
+    participant VO as OpenAI / Gemini retrieval
     participant PG as Postgres (pgvector, RLS)
     participant GATE as Cheap model (gate)
     participant VLM as Vision LLM (diagnosis)
@@ -189,7 +185,7 @@ sequenceDiagram
             API-->>F: rejection_reason, "retake the photo"
         else diagnosable
             API->>W: enqueue diagnose_scan job
-            W->>VO: embed_image(scan)
+            W->>VO: describe image, embed description in separate provider spaces
             W->>PG: over-fetch similar scans<br/>WHERE org_id = ? AND confirmed_dx IS NOT NULL<br/>LIMIT k*20 (RLS-safe over-fetch)
             PG-->>W: candidate neighbours (post-RLS)
             W->>PG: get field context (crop, region, soil test)
@@ -254,13 +250,13 @@ This is the diagram version of the single most important rule in §C4.2 of the m
 
 ```mermaid
 flowchart LR
-    SRC[Source document<br/>ICAR / SAU / CIB&RC / IMD] --> LIC{Licence check}
+    SRC[Source document<br/>ICAR / SAU / CIB&RC] --> LIC{Licence check}
     LIC -->|CC BY-NC — rejected| REJ[Do not ingest]
     LIC -->|GODL-India / CC BY — OK| META[Record: publisher, licence,<br/>source_url, tier, applicable_regions]
 
     META --> PARSE[Parse<br/>pypdf/pdfplumber, or vision LLM<br/>for scanned bulletins]
     PARSE --> CHUNK[Semantic chunk<br/>~512 tokens, 15% overlap<br/>preserve source/page/section]
-    CHUNK --> EMBED[Embed<br/>voyage-3-large]
+    CHUNK --> EMBED[Embed<br/>OpenAI / Gemini text model]
     EMBED --> STORE[(agronomy_document_chunk<br/>tier, applicable_regions, embedding)]
 
     style REJ fill:#f8d7da,stroke:#dc3545
@@ -280,8 +276,10 @@ flowchart TD
         ACC1 --> LOGIN1[Phone + PIN login<br/>lockout after 5 failures]
     end
 
-    subgraph Staff["Staff path — OAuth"]
-        OAUTH[Google / Microsoft via Authlib] --> ACC2[User row: provider=oauth]
+    subgraph Staff["Staff path: PIN or optional OIDC"]
+        STAFFPIN[Registered phone + PIN<br/>enabled in production by default] --> CHECKS[Active account and lockout checks]
+        CHECKS --> ACC2[Staff account]
+        OAUTH[Keycloak / Google / Microsoft via Authlib] --> ACC2
         ACC2 --> LOGIN2[Short access token 15m<br/>+ rotating refresh]
     end
 
@@ -344,7 +342,7 @@ erDiagram
         uuid id PK
         uuid scan_id FK
         uuid organization_id FK
-        vector embedding "voyage-multimodal-3, dim N"
+        vector embedding "provider-specific description vector, 1024 dimensions"
         text confirmed_dx "NULL until agronomist confirms"
         uuid confirmed_by FK "agronomist User.id"
         timestamptz confirmed_at
@@ -423,7 +421,7 @@ erDiagram
     WEATHER_SNAPSHOT {
         uuid id PK
         uuid field_id FK
-        string source "imd/open-meteo"
+        string source "open-meteo"
         jsonb forecast_dto
         timestamptz fetched_at
     }
@@ -455,7 +453,7 @@ erDiagram
         int page_number
         string section
         text content
-        vector embedding "voyage-3-large, dim N"
+        vector embedding "provider-specific text vector, 1024 dimensions"
     }
 
     USAGE_RECORD {
@@ -519,4 +517,4 @@ erDiagram
 - **`DIAGNOSIS` is deliberately wide and denormalized** (`full_response`, `token_usage` as JSONB) — this table is the audit trail for dispute resolution and eval regression, so it intentionally keeps more than a normalized schema would, per the plan's "every diagnosis logged... for review, dispute resolution and eval regression" control.
 - **`AGRONOMY_DOCUMENT.tier` and `applicable_regions` are `NOT NULL` at the document level**, not the chunk level — tier and licensing are properties of the source document, not of an individual chunk, so this avoids re-deriving them per chunk at retrieval time.
 - **`FARMER_OUTCOME_FEEDBACK` is intentionally a separate table from `SCAN_EMBEDDING`**, not a column on it — this is the schema-level enforcement of "farmer feedback never writes `confirmed_dx` directly" from §2.2; the two tables can only be joined, never conflated.
-- **`vector` column dimensions are placeholders ("dim N")** — confirm the exact Voyage model dimension at implementation time and pin it in the migration; changing it later requires re-embedding the full corpus, as noted in the main plan.
+- **`vector` column dimensions are placeholders ("dim N")** — use the configured 1024 dimensions for both separate provider columns and pin the schema dimension; changing it later requires re-embedding the full corpus, as noted in the main plan.

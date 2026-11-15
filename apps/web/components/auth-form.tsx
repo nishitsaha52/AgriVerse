@@ -8,12 +8,24 @@ import { FormEvent, useEffect, useState } from "react";
 import { api, ApiError } from "@/lib/api";
 import type { Session } from "@/lib/types";
 
-export function AuthForm({ mode }: { mode: "login" | "register" }) {
+const providerLabels: Record<string, string> = {
+  keycloak: "Keycloak", google: "Google", microsoft: "Microsoft",
+};
+export function AuthForm({
+  mode,
+  allowStaffPin = false,
+  staffProviders = [],
+}: {
+  mode: "login" | "register";
+  allowStaffPin?: boolean;
+  staffProviders?: string[];
+}) {
   const router = useRouter();
   const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
   const [organizationId, setOrganizationId] = useState("");
   const [staffInviteCode, setStaffInviteCode] = useState("");
+  const [staffPin, setStaffPin] = useState(false);
   const staffParams = new URLSearchParams({ organization_id: organizationId });
   if (staffInviteCode) staffParams.set("invite_code", staffInviteCode);
   const staffQuery = staffParams.toString();
@@ -23,11 +35,12 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
     const organizationFromInvite = query.get("organization_id");
     if (organizationFromInvite) setOrganizationId(organizationFromInvite);
     setStaffInviteCode(query.get("invite_code") ?? "");
+    setStaffPin(allowStaffPin && query.get("staff_pin") === "1");
     const match = document.cookie.match(/(?:^|; )agriverse_org=([^;]*)/);
     if (match && !organizationFromInvite) {
       setOrganizationId(decodeURIComponent(match[1]));
     }
-  }, []);
+  }, [allowStaffPin]);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -36,14 +49,22 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
     const data = new FormData(event.currentTarget);
     try {
       if (mode === "login") {
-        await api<Session>("auth/farmer/login", {
-          method: "POST",
-          body: JSON.stringify({
-            phone: data.get("phone"),
-            pin: data.get("pin"),
-            organization_id: data.get("organization_id"),
-          }),
-        });
+        const session = await api<Session>(
+          staffPin ? "auth/staff/pin-login" : "auth/farmer/login",
+          {
+            method: "POST",
+            body: JSON.stringify({
+              phone: data.get("phone"),
+              pin: data.get("pin"),
+              organization_id: data.get("organization_id"),
+            }),
+          },
+        );
+        router.push(
+          ["agronomist", "org_admin", "super_admin"].includes(session.role)
+            ? "/staff/reviews"
+            : "/dashboard",
+        );
       } else {
         await api<Session>("auth/farmer/register", {
           method: "POST",
@@ -54,8 +75,8 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
             preferred_language: data.get("preferred_language"),
           }),
         });
+        router.push("/dashboard");
       }
-      router.push("/dashboard");
       router.refresh();
     } catch (reason) {
       setError(reason instanceof ApiError ? reason.message : "Unable to continue");
@@ -87,10 +108,20 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
           <h1>{login ? "Sign in to your fields" : "Create your farmer account"}</h1>
           <p className="muted">
             {login
-              ? "Use the phone number and PIN registered with your field agent."
+              ? "Use the phone number and PIN registered with your organization."
               : "Your field agent or organization administrator provides the invite."}
           </p>
           <form className="form" onSubmit={submit}>
+            {login && allowStaffPin ? (
+              <label>
+                <input
+                  type="checkbox"
+                  checked={staffPin}
+                  onChange={(event) => setStaffPin(event.target.checked)}
+                />{" "}
+                Sign in as staff/admin with PIN
+              </label>
+            ) : null}
             <div className="field-group">
               <label htmlFor="phone">Phone number</label>
               <input
@@ -172,34 +203,24 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
               {login ? "Sign in" : "Create account"}
             </button>
           </form>
-          {login ? (
+          {login && staffProviders.length > 0 ? (
             <div style={{ marginTop: 24 }}>
               <div className="muted" style={{ marginBottom: 10 }}>
                 Staff sign-in
               </div>
               <div style={{ display: "grid", gap: 10 }}>
-                <a
-                  aria-disabled={!organizationId}
-                  className="button button-secondary"
-                  href={
-                    organizationId
-                      ? `/api/oauth/start/google?${staffQuery}`
-                      : "#organization_id"
-                  }
-                >
-                  Continue with Google
-                </a>
-                <a
-                  aria-disabled={!organizationId}
-                  className="button button-secondary"
-                  href={
-                    organizationId
-                      ? `/api/oauth/start/microsoft?${staffQuery}`
-                      : "#organization_id"
-                  }
-                >
-                  Continue with Microsoft
-                </a>
+                {staffProviders.map((provider) => (
+                  <a
+                    key={provider}
+                    aria-disabled={!organizationId}
+                    className="button button-secondary"
+                    href={organizationId
+                      ? `/api/oauth/start/${provider}?${staffQuery}`
+                      : "#organization_id"}
+                  >
+                    Continue with {providerLabels[provider] ?? provider}
+                  </a>
+                ))}
               </div>
             </div>
           ) : null}

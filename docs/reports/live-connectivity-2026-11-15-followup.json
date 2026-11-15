@@ -1,0 +1,142 @@
+{
+  "run_id": "93dcb4ed-c0b2-453b-9c64-db07bfe51a22",
+  "started_utc": "2026-11-15T08:08:27.689980+00:00",
+  "updated_utc": "2026-11-15T08:08:30.407992+00:00",
+  "results": [
+    {
+      "service": "OIDC",
+      "check": "google",
+      "status": "NOT_CONFIGURED"
+    },
+    {
+      "service": "OIDC",
+      "check": "microsoft",
+      "status": "NOT_CONFIGURED"
+    },
+    {
+      "service": "MinIO",
+      "check": "signed bucket authentication",
+      "status": "PASS",
+      "bucket": "agriverse"
+    },
+    {
+      "service": "OIDC",
+      "check": "Keycloak Authlib discovery as configured",
+      "status": "FAIL",
+      "seconds": 0.17,
+      "error_type": "HTTPStatusError",
+      "http_status": 301
+    },
+    {
+      "service": "MinIO",
+      "check": "basic put/head/get",
+      "status": "PASS",
+      "seconds": 0.06,
+      "bytes_verified": 884,
+      "encryption": null
+    },
+    {
+      "service": "MinIO",
+      "check": "application AES256 upload/read",
+      "status": "FAIL",
+      "seconds": 0.01,
+      "error_type": "ClientError",
+      "code": "XMinioPaidTierLicenseRequired",
+      "http_status": 405
+    },
+    {
+      "service": "OIDC",
+      "check": "Keycloak discovery (Windows trust, redirects)",
+      "status": "PASS",
+      "http_status": 200,
+      "issuer": "https://wisdom-dev.local/keycloak/realms/agriverse",
+      "issuer_matches_configuration": false,
+      "redirects": [
+        301
+      ],
+      "pkce_s256": true
+    },
+    {
+      "service": "MinIO",
+      "check": "public presigned upload/download (default TLS trust)",
+      "status": "FAIL",
+      "seconds": 0.04,
+      "error_type": "ConnectError",
+      "diagnostic": "TLS certificate chain is not trusted by the default Python HTTP client."
+    },
+    {
+      "service": "OIDC",
+      "check": "Keycloak HTTPS discovery with default TLS trust",
+      "status": "FAIL",
+      "seconds": 0.03,
+      "error_type": "ConnectError",
+      "diagnostic": "TLS certificate chain is not trusted by the default Python HTTP client."
+    },
+    {
+      "service": "MinIO",
+      "check": "public presigned upload/download (Windows trusted roots)",
+      "status": "FAIL",
+      "seconds": 0.01,
+      "error_type": "HTTPStatusError",
+      "code": "InvalidArgument",
+      "diagnostic": "S3 API Requests must be made to API port.",
+      "http_status": 400
+    },
+    {
+      "service": "OIDC",
+      "check": "Keycloak signing keys (Windows trust)",
+      "status": "PASS",
+      "seconds": 0.01,
+      "http_status": 200,
+      "signing_keys": 2
+    },
+    {
+      "service": "MinIO",
+      "check": "browser upload CORS preflight (Windows trust)",
+      "status": "FAIL",
+      "seconds": 0.02,
+      "error_type": "HTTPStatusError",
+      "code": "InvalidArgument",
+      "diagnostic": "S3 API Requests must be made to API port.",
+      "http_status": 400
+    },
+    {
+      "service": "MinIO",
+      "check": "temporary-object cleanup",
+      "status": "PASS",
+      "seconds": 0.02,
+      "object": "diagnostics/93dcb4ed-c0b2-453b-9c64-db07bfe51a22/basic.jpg"
+    },
+    {
+      "service": "MinIO",
+      "check": "temporary-object cleanup",
+      "status": "PASS",
+      "seconds": 0.01,
+      "object": "diagnostics/93dcb4ed-c0b2-453b-9c64-db07bfe51a22/encrypted.jpg"
+    },
+    {
+      "service": "MinIO",
+      "check": "temporary-object cleanup",
+      "status": "PASS",
+      "seconds": 0.01,
+      "object": "diagnostics/93dcb4ed-c0b2-453b-9c64-db07bfe51a22/public.jpg"
+    },
+    {
+      "service": "OIDC",
+      "check": "Keycloak authorization and callback registration",
+      "status": "PASS",
+      "seconds": 0.23,
+      "http_status": 200,
+      "login_form_present": true,
+      "client_id": "agriverse-web",
+      "redirect_uri": "http://localhost:8000/api/v1/auth/staff/oauth/keycloak/callback",
+      "scope": "client/redirect acceptance only; no user authentication or token exchange"
+    },
+    {
+      "service": "OIDC",
+      "check": "Keycloak complete sign-in and session",
+      "status": "BLOCKED",
+      "reason": "No interactive sign-in or token/session exchange was completed. Review the application, issuer and TLS checks before sign-in."
+    }
+  ]
+}

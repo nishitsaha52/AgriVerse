@@ -23,6 +23,7 @@ dist/
 .env.production.local
 .env
 .venv/
+.venv.before-repair-*/
 __pycache__/
 *.py[cod]
 .pytest_cache/
@@ -45,3 +46,5 @@ pnpm-debug.log*
 
 # recoverable local archive for superseded implementation files
 recycle/
+credentials.json
+.runtime/

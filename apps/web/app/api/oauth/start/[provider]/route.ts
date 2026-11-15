@@ -8,7 +8,7 @@ export async function GET(
   context: { params: Promise<{ provider: string }> },
 ) {
   const { provider } = await context.params;
-  if (!["google", "microsoft"].includes(provider)) {
+  if (!["google", "microsoft", "keycloak"].includes(provider)) {
     return NextResponse.json({ detail: "Unknown OAuth provider" }, { status: 404 });
   }
   const organizationId = request.nextUrl.searchParams.get("organization_id");

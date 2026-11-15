@@ -1,6 +1,8 @@
+import asyncio
 import logging
+import secrets
 import uuid
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Awaitable, Callable
 from contextlib import asynccontextmanager
 
 import structlog
@@ -9,7 +11,8 @@ from arq.connections import RedisSettings
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.openapi.docs import get_swagger_ui_html
+from fastapi.responses import HTMLResponse, JSONResponse, Response
 from sqlalchemy import text
 from starlette.middleware.sessions import SessionMiddleware
 
@@ -27,6 +30,7 @@ from agriverse.routers import (
     soil,
     weather,
 )
+from agriverse.services.llm_tracing import flush_llm_traces, tracing_provider
 from agriverse.services.oauth_exchange import oauth_exchange_store
 from agriverse.services.rate_limit import rate_limiter
 from agriverse.services.storage import storage
@@ -47,6 +51,7 @@ logger = structlog.get_logger()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+    tracing_provider(settings)
     app.state.queue = None
     app.state.storage_ready = False
     try:
@@ -59,6 +64,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     except Exception as exc:
         logger.error("queue_startup_failed", error=type(exc).__name__)
     yield
+    await asyncio.to_thread(flush_llm_traces, settings)
     if app.state.queue is not None:
         await app.state.queue.aclose()
     await weather_service.close()
@@ -72,7 +78,7 @@ app = FastAPI(
     version="0.1.0",
     lifespan=lifespan,
     openapi_url="/openapi.json",
-    docs_url="/docs" if settings.app_env != "production" else None,
+    docs_url=None,
     redoc_url=None,
 )
 app.add_middleware(
@@ -91,22 +97,57 @@ app.add_middleware(
 
 
 @app.middleware("http")
-async def request_context(request: Request, call_next: object) -> JSONResponse:
+async def request_context(
+    request: Request, call_next: Callable[[Request], Awaitable[Response]]
+) -> Response:
     request_id = request.headers.get("X-Request-Id") or str(uuid.uuid4())
     structlog.contextvars.clear_contextvars()
     structlog.contextvars.bind_contextvars(request_id=request_id, path=request.url.path)
-    response = await call_next(request)  # type: ignore[operator]
+    response = await call_next(request)
     response.headers["X-Request-Id"] = request_id
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
     response.headers["Permissions-Policy"] = "camera=(self), geolocation=(self)"
-    response.headers["Content-Security-Policy"] = (
-        "default-src 'self'; img-src 'self' data: blob: https:; "
-        "connect-src 'self' https:; frame-ancestors 'none'; base-uri 'self'"
+    response.headers.setdefault(
+        "Content-Security-Policy",
+        (
+            "default-src 'self'; img-src 'self' data: blob: https:; "
+            "connect-src 'self' https:; frame-ancestors 'none'; base-uri 'self'"
+        ),
     )
     if settings.app_env == "production":
         response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
     return response
+
+
+if settings.app_env != "production":
+
+    @app.get("/docs", include_in_schema=False)
+    async def swagger_docs(request: Request) -> HTMLResponse:
+        nonce = secrets.token_urlsafe(32)
+        root_path = request.scope.get("root_path", "").rstrip("/")
+        page = get_swagger_ui_html(
+            openapi_url=f"{root_path}{app.openapi_url}",
+            title=f"{app.title} - Swagger UI",
+        )
+        html = bytes(page.body).decode().replace("<script>", f'<script nonce="{nonce}">')
+        # Swagger needs its CDN assets and initializer; scope these allowances
+        # to the documentation page while retaining the API's default policy.
+        return HTMLResponse(
+            html,
+            headers={
+                "Cache-Control": "no-store",
+                "Content-Security-Policy": (
+                    "default-src 'self'; "
+                    f"script-src 'self' https://cdn.jsdelivr.net/npm/swagger-ui-dist@5/ "
+                    f"'nonce-{nonce}'; "
+                    "style-src 'self' https://cdn.jsdelivr.net/npm/swagger-ui-dist@5/ "
+                    "'unsafe-inline'; "
+                    "img-src 'self' data: https:; connect-src 'self'; "
+                    "object-src 'none'; frame-ancestors 'none'; base-uri 'self'"
+                ),
+            },
+        )
 
 
 @app.exception_handler(HTTPException)

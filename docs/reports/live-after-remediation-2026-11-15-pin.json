@@ -1,0 +1,9 @@
+{
+  "check": "Staff PIN login, authenticated query, refresh and logout",
+  "checked_utc": "2026-11-15T09:08:42.606565+00:00",
+  "login_http_status": 200,
+  "authenticated_query_http_status": 200,
+  "refresh_http_status": 200,
+  "status": "PASS",
+  "logout_http_status": 204
+}

@@ -1,0 +1,432 @@
+{
+  "run_id": "859a40e6-7ec4-43a9-a6a6-9677c7cfa577",
+  "started_utc": "2026-11-15T08:05:41.393345+00:00",
+  "updated_utc": "2026-11-15T08:09:40.575966+00:00",
+  "results": [
+    {
+      "service": "OIDC",
+      "check": "google",
+      "status": "NOT_CONFIGURED"
+    },
+    {
+      "service": "OIDC",
+      "check": "microsoft",
+      "status": "NOT_CONFIGURED"
+    },
+    {
+      "service": "OTel",
+      "check": "OTLP traces export",
+      "status": "PASS",
+      "seconds": 0.83,
+      "http_status": 200,
+      "rejected": 0,
+      "scope": "collector acceptance; downstream persistence not queried"
+    },
+    {
+      "service": "Redis",
+      "check": "authenticated PING",
+      "status": "PASS"
+    },
+    {
+      "service": "OIDC",
+      "check": "Keycloak Authlib discovery as configured",
+      "status": "FAIL",
+      "seconds": 0.03,
+      "error_type": "HTTPStatusError",
+      "http_status": 301
+    },
+    {
+      "service": "Redis",
+      "check": "SET/GET with TTL",
+      "status": "PASS"
+    },
+    {
+      "service": "OTel",
+      "check": "OTLP metrics export",
+      "status": "PASS",
+      "seconds": 0.02,
+      "http_status": 200,
+      "rejected": 0,
+      "scope": "collector acceptance; downstream persistence not queried"
+    },
+    {
+      "service": "Redis",
+      "check": "temporary-key cleanup",
+      "status": "PASS"
+    },
+    {
+      "service": "OTel",
+      "check": "OTLP logs export",
+      "status": "PASS",
+      "seconds": 0.01,
+      "http_status": 200,
+      "rejected": 0,
+      "scope": "collector acceptance; downstream persistence not queried"
+    },
+    {
+      "service": "OIDC",
+      "check": "Keycloak discovery (Windows trust, redirects)",
+      "status": "PASS",
+      "http_status": 200,
+      "issuer": "https://wisdom-dev.local/keycloak/realms/agriverse",
+      "issuer_matches_configuration": false,
+      "redirects": [
+        301
+      ],
+      "pkce_s256": true
+    },
+    {
+      "service": "MinIO",
+      "check": "signed bucket authentication",
+      "status": "PASS",
+      "bucket": "agriverse"
+    },
+    {
+      "service": "MinIO",
+      "check": "basic put/head/get",
+      "status": "PASS",
+      "seconds": 0.09,
+      "bytes_verified": 884,
+      "encryption": null
+    },
+    {
+      "service": "MinIO",
+      "check": "application AES256 upload/read",
+      "status": "FAIL",
+      "seconds": 0.02,
+      "error_type": "ClientError",
+      "code": "XMinioPaidTierLicenseRequired",
+      "http_status": 405
+    },
+    {
+      "service": "MinIO",
+      "check": "public presigned upload/download (default TLS trust)",
+      "status": "FAIL",
+      "seconds": 0.02,
+      "error_type": "ConnectError"
+    },
+    {
+      "service": "MinIO",
+      "check": "public presigned upload/download (Windows trusted roots)",
+      "status": "FAIL",
+      "seconds": 0.02,
+      "error_type": "HTTPStatusError",
+      "http_status": 400
+    },
+    {
+      "service": "MinIO",
+      "check": "browser upload CORS preflight (Windows trust)",
+      "status": "FAIL",
+      "seconds": 0.01,
+      "error_type": "HTTPStatusError",
+      "http_status": 400
+    },
+    {
+      "service": "MinIO",
+      "check": "temporary-object cleanup",
+      "status": "PASS",
+      "seconds": 0.05,
+      "object": "diagnostics/859a40e6-7ec4-43a9-a6a6-9677c7cfa577/basic.jpg"
+    },
+    {
+      "service": "MinIO",
+      "check": "temporary-object cleanup",
+      "status": "PASS",
+      "seconds": 0.01,
+      "object": "diagnostics/859a40e6-7ec4-43a9-a6a6-9677c7cfa577/encrypted.jpg"
+    },
+    {
+      "service": "MinIO",
+      "check": "temporary-object cleanup",
+      "status": "PASS",
+      "seconds": 0.01,
+      "object": "diagnostics/859a40e6-7ec4-43a9-a6a6-9677c7cfa577/public.jpg"
+    },
+    {
+      "service": "Open-Meteo",
+      "check": "live forecast response integrity",
+      "status": "PASS",
+      "http_status": 200,
+      "hourly_points": 72,
+      "timezone": "Asia/Kolkata",
+      "utc_offset_seconds": 19800
+    },
+    {
+      "service": "OIDC",
+      "check": "Keycloak signing keys (Windows trust)",
+      "status": "PASS",
+      "seconds": 1.26,
+      "http_status": 200,
+      "signing_keys": 2
+    },
+    {
+      "service": "OpenAI",
+      "check": "direct inference and key authentication",
+      "status": "FAIL",
+      "seconds": 3.6,
+      "error_type": "AuthenticationError",
+      "code": "expired_secret_key",
+      "type": "invalid_request_error",
+      "http_status": 401
+    },
+    {
+      "service": "Open-Meteo",
+      "check": "application weather adapter",
+      "status": "PASS",
+      "hourly_points": 72,
+      "source": "open-meteo"
+    },
+    {
+      "service": "Open-Meteo",
+      "check": "application timezone integrity",
+      "status": "FAIL",
+      "provider_utc_offset_seconds": 19800,
+      "adapter_utc_offset_seconds": 0,
+      "finding": "Adapter labels timezone=auto local timestamps as UTC."
+    },
+    {
+      "service": "Database",
+      "check": "authentication and read-only query",
+      "status": "PASS",
+      "probe": 1,
+      "database": "agriverse",
+      "rolsuper": true,
+      "rolbypassrls": true
+    },
+    {
+      "service": "Database",
+      "check": "application role isolation",
+      "status": "WARN",
+      "finding": "Configured role bypasses row-level security; use a least-privilege application role."
+    },
+    {
+      "service": "Database",
+      "check": "retrieval schema and migration",
+      "status": "FAIL",
+      "pgvector": "0.8.7",
+      "revisions": [
+        "20260731_0001"
+      ],
+      "missing_columns": [
+        [
+          "agronomy_document_chunk",
+          "embedding_model"
+        ],
+        [
+          "agronomy_document_chunk",
+          "gemini_embedding"
+        ],
+        [
+          "agronomy_document_chunk",
+          "gemini_embedding_model"
+        ],
+        [
+          "scan_embedding",
+          "embedding_model"
+        ],
+        [
+          "scan_embedding",
+          "embedding_text"
+        ],
+        [
+          "scan_embedding",
+          "gemini_embedding"
+        ],
+        [
+          "scan_embedding",
+          "gemini_embedding_model"
+        ]
+      ]
+    },
+    {
+      "service": "OpenAI",
+      "check": "direct retrieval embedding",
+      "status": "FAIL",
+      "seconds": 1.12,
+      "error_type": "AuthenticationError",
+      "code": "expired_secret_key",
+      "type": "invalid_request_error",
+      "http_status": 401
+    },
+    {
+      "service": "Application",
+      "check": "API live endpoint",
+      "status": "FAIL",
+      "seconds": 3.54,
+      "error_type": "ConnectError"
+    },
+    {
+      "service": "OIDC",
+      "check": "Keycloak authorization and callback registration",
+      "status": "PASS",
+      "seconds": 1.58,
+      "http_status": 200,
+      "login_form_present": true,
+      "client_id": "agriverse-web",
+      "redirect_uri": "http://localhost:8000/api/v1/auth/staff/oauth/keycloak/callback",
+      "scope": "client/redirect acceptance only; no user authentication or token exchange"
+    },
+    {
+      "service": "OIDC",
+      "check": "Keycloak complete sign-in and session",
+      "status": "BLOCKED",
+      "reason": "API/web are not listening; configured HTTP issuer redirects to HTTPS and default Python TLS trust fails. No interactive sign-in or token/session exchange was completed."
+    },
+    {
+      "service": "Application",
+      "check": "Web live endpoint",
+      "status": "FAIL",
+      "seconds": 2.3,
+      "error_type": "ConnectError"
+    },
+    {
+      "service": "Gemini",
+      "check": "application structured answer (isolated provider)",
+      "status": "PASS",
+      "seconds": 3.66,
+      "provider": "gemini",
+      "model": "gemini-3.8-flash",
+      "structured_result_valid": true
+    },
+    {
+      "service": "Gemini",
+      "check": "application image gate",
+      "status": "PASS",
+      "seconds": 2.9,
+      "is_plant_image": false,
+      "is_diagnosable": false,
+      "model": "gemini-3.8-flash"
+    },
+    {
+      "service": "Gemini",
+      "check": "application retrieval image description",
+      "status": "PASS",
+      "seconds": 3.25,
+      "description_nonempty": true
+    },
+    {
+      "service": "Gemini",
+      "check": "application diagnosis schema",
+      "status": "PASS",
+      "seconds": 3.98,
+      "model": "gemini-3.8-flash",
+      "structured_result_valid": true,
+      "synthetic_image": true
+    },
+    {
+      "service": "Gemini",
+      "check": "application retrieval reranking",
+      "status": "PASS",
+      "seconds": 3.72,
+      "ranking_valid": true
+    },
+    {
+      "service": "Gemini",
+      "check": "application retrieval document embedding",
+      "status": "PASS",
+      "seconds": 0.78,
+      "model": "gemini-embedding-001",
+      "dimensions": 1024,
+      "finite_normalized": true
+    },
+    {
+      "service": "Gemini",
+      "check": "application retrieval query embedding",
+      "status": "PASS",
+      "seconds": 0.76,
+      "model": "gemini-embedding-001",
+      "dimensions": 1024,
+      "finite_normalized": true
+    },
+    {
+      "service": "LLM fallback",
+      "check": "application answer with both configured keys",
+      "status": "PASS",
+      "seconds": 3.82,
+      "selected_provider": "gemini",
+      "model": "gemini-3.8-flash"
+    },
+    {
+      "service": "LLM fallback",
+      "check": "application retrieval with both configured keys",
+      "status": "PASS",
+      "seconds": 1.09,
+      "selected_provider": "gemini",
+      "dimensions": 1024
+    },
+    {
+      "service": "Langfuse",
+      "check": "health (default TLS trust)",
+      "status": "FAIL",
+      "seconds": 0.02,
+      "error_type": "ConnectError"
+    },
+    {
+      "service": "Langfuse",
+      "check": "health (Windows trusted roots)",
+      "status": "PASS",
+      "seconds": 0.02,
+      "http_status": 200,
+      "version": "4.50.0"
+    },
+    {
+      "service": "Langfuse",
+      "check": "key authentication (Windows trust)",
+      "status": "PASS",
+      "seconds": 0.52,
+      "http_status": 200,
+      "accessible_projects": 1
+    },
+    {
+      "service": "Langfuse",
+      "check": "generation OTLP ingestion (Windows trust)",
+      "status": "PASS",
+      "seconds": 1.43,
+      "http_status": 200,
+      "trace_id": "2388419fd604b9136c8f7fda0ba0a41f",
+      "manual_diagnostic_trace": true
+    },
+    {
+      "service": "Langfuse",
+      "check": "exported trace readback",
+      "status": "FAIL",
+      "seconds": 12.13,
+      "error_type": "HTTPStatusError",
+      "http_status": 404
+    },
+    {
+      "service": "Langfuse",
+      "check": "automatic application LLM tracing wiring",
+      "status": "FAIL",
+      "finding": "LANGFUSE_* settings are not consumed by the application exporter; the diagnostic used direct OTLP ingestion."
+    },
+    {
+      "service": "Langfuse",
+      "check": "delayed trace readback",
+      "http_status": 404,
+      "checked_utc": "2026-11-15T08:09:09.479482+00:00",
+      "trace_id": "2388419fd604b9136c8f7fda0ba0a41f",
+      "status": "FAIL"
+    },
+    {
+      "service": "Langfuse",
+      "check": "observation readback",
+      "http_status": 404,
+      "checked_utc": "2026-11-15T08:09:09.498498+00:00",
+      "trace_id": "2388419fd604b9136c8f7fda0ba0a41f",
+      "status": "FAIL"
+    },
+    {
+      "service": "Langfuse",
+      "check": "v2 observation readback",
+      "http_status": 200,
+      "checked_utc": "2026-11-15T08:09:40.575700+00:00",
+      "trace_id": "2388419fd604b9136c8f7fda0ba0a41f",
+      "status": "PASS",
+      "observation_count": 1,
+      "types": [
+        "GENERATION"
+      ]
+    }
+  ]
+}

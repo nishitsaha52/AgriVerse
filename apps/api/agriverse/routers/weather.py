@@ -1,6 +1,7 @@
 import uuid
 
-from fastapi import APIRouter, Depends
+import httpx
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from agriverse.db import get_db
@@ -9,7 +10,7 @@ from agriverse.models import WeatherAlert, WeatherSnapshot
 from agriverse.routers.soil import authorize_field
 from agriverse.schemas import ForecastRead
 from agriverse.security import Principal
-from agriverse.services.weather import weather_service
+from agriverse.services.weather import WeatherUnavailableError, weather_service
 
 router = APIRouter(tags=["weather"])
 
@@ -21,11 +22,18 @@ async def field_weather(
     db: AsyncSession = Depends(get_db),
 ) -> ForecastRead:
     field = await authorize_field(db, principal, field_id)
-    forecast = await weather_service.get_current(
-        cache_region=f"{field.state}:{field.district}",
-        latitude=float(field.latitude),
-        longitude=float(field.longitude),
-    )
+    try:
+        forecast = await weather_service.get_current(
+            cache_region=f"{field.state}:{field.district}",
+            latitude=float(field.latitude),
+            longitude=float(field.longitude),
+        )
+    except (httpx.HTTPError, WeatherUnavailableError) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Weather service is temporarily unavailable. Please try again later.",
+            headers={"Retry-After": "60"},
+        ) from exc
     db.add(
         WeatherSnapshot(
             field_id=field.id,

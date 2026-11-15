@@ -30,6 +30,7 @@ from agriverse.services.ai import (
     vision_provider,
 )
 from agriverse.services.retrieval import (
+    StoredEmbeddings,
     citations_from_document_rows,
     embedding_service,
     search_documents,
@@ -159,6 +160,7 @@ async def process_scan(
             return
         scan.status = "processing"
         await db.commit()
+        await set_tenant_context(db, org_uuid)
 
         try:
             raw = await storage.read(scan.object_key)
@@ -182,8 +184,8 @@ async def process_scan(
                     resource_type="scan",
                     resource_id=str(scan.id),
                     after={
-                        "provider": "openai-compatible",
-                        "model": settings.openai_gate_model,
+                        "provider": gate.metadata.get("provider", "unknown"),
+                        "model": gate.metadata.get("model", "unknown"),
                         "prompt_version": PROMPT_VERSION,
                     },
                 )
@@ -204,8 +206,8 @@ async def process_scan(
                         immediate_actions=[],
                         citations=[],
                         requires_expert=False,
-                        provider="openai-compatible",
-                        model_id=settings.openai_gate_model,
+                        provider=str(gate.metadata.get("provider", "unknown")),
+                        model_id=str(gate.metadata.get("model", "unknown")),
                         prompt_version=PROMPT_VERSION,
                         token_usage={},
                         full_response=result.model_dump(mode="json"),
@@ -225,7 +227,7 @@ async def process_scan(
                 .limit(1)
             )
 
-            embedding: list[float] | None = None
+            embedding: StoredEmbeddings | None = None
             similar_cases: list[dict[str, Any]] = []
             document_rows: list[dict[str, Any]] = []
             try:
@@ -233,7 +235,7 @@ async def process_scan(
                 similar_cases = await search_similar_scans(
                     db,
                     organization_id=org_uuid,
-                    embedding=embedding,
+                    embedding=embedding.preferred,
                 )
                 query = (
                     f"{field.current_crop or 'crop'} plant diagnosis in "
@@ -292,7 +294,7 @@ async def process_scan(
                     immediate_actions=result.immediate_actions,
                     citations=[citation.model_dump(mode="json") for citation in result.citations],
                     requires_expert=result.requires_expert,
-                    provider="openai-compatible",
+                    provider=str(metadata.get("provider", "unknown")),
                     model_id=str(metadata.get("model", settings.openai_vision_model)),
                     prompt_version=PROMPT_VERSION,
                     token_usage=metadata.get("usage", {}),
@@ -304,7 +306,8 @@ async def process_scan(
                     ScanEmbedding(
                         scan_id=scan.id,
                         organization_id=org_uuid,
-                        embedding=embedding,
+                        embedding_text=embedding.text,
+                        **embedding.columns(),
                     )
                 )
             primary_label = result.primary.condition.casefold() if result.primary else None
@@ -360,7 +363,7 @@ async def process_scan(
                     resource_type="scan",
                     resource_id=str(scan.id),
                     after={
-                        "provider": "openai-compatible",
+                        "provider": metadata.get("provider", "unknown"),
                         "model": metadata.get("model", settings.openai_vision_model),
                         "response_id": metadata.get("response_id"),
                         "prompt_version": PROMPT_VERSION,

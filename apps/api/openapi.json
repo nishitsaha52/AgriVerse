@@ -2573,6 +2573,48 @@
         ]
       }
     },
+    "/api/v1/auth/staff/pin-login": {
+      "post": {
+        "description": "Sign in staff with phone/PIN and organization membership in any environment.",
+        "operationId": "staff_pin_login_api_v1_auth_staff_pin_login_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FarmerLogin"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TokenPair"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Staff Pin Login",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
     "/api/v1/documents": {
       "post": {
         "operationId": "ingest_document_api_v1_documents_post",

@@ -7,6 +7,7 @@ from unittest.mock import AsyncMock
 import pytest
 from fastapi import HTTPException
 
+from agriverse.config import Settings
 from agriverse.models import (
     AgronomistReviewQueue,
     Diagnosis,
@@ -30,6 +31,8 @@ from agriverse.schemas import (
     SoilTestCreate,
 )
 from agriverse.security import Principal
+from agriverse.services import storage as storage_module
+from agriverse.services.retrieval import EmbeddedText, StoredEmbeddings
 from tests.fakes import FakeSession
 
 NOW = datetime.now(UTC)
@@ -215,6 +218,7 @@ async def test_soil_history_and_weather_flow(monkeypatch: pytest.MonkeyPatch) ->
 
 @pytest.mark.asyncio
 async def test_scan_create_complete_read_and_feedback(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(storage_module, "settings", Settings(_env_file=None))
     principal = actor()
     farm = farm_record(principal)
     field = field_record(principal, farm)
@@ -359,8 +363,15 @@ async def test_document_ingestion_chunks_embeds_and_audits(monkeypatch: pytest.M
     principal = actor("super_admin")
     monkeypatch.setattr(
         documents.embedding_service,
-        "embed_texts",
-        AsyncMock(return_value=[[0.0] * 1024]),
+        "embed_documents",
+        AsyncMock(
+            return_value=[
+                StoredEmbeddings(
+                    "document",
+                    openai=EmbeddedText([0.1] * 1024, "openai", "text-embedding-3-small"),
+                )
+            ]
+        ),
     )
     payload = DocumentIngest(
         title="Rice field guide",

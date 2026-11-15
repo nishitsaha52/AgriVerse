@@ -238,9 +238,11 @@ class ScanEmbedding(Base, TimestampMixin):
     organization_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("organization.id", ondelete="CASCADE"), nullable=False, index=True
     )
-    embedding: Mapped[list[float]] = mapped_column(
-        Vector(settings.vector_dimension), nullable=False
-    )
+    embedding: Mapped[list[float] | None] = mapped_column(Vector(settings.vector_dimension))
+    embedding_model: Mapped[str | None] = mapped_column(String(160))
+    gemini_embedding: Mapped[list[float] | None] = mapped_column(Vector(settings.vector_dimension))
+    gemini_embedding_model: Mapped[str | None] = mapped_column(String(160))
+    embedding_text: Mapped[str | None] = mapped_column(Text)
     confirmed_dx: Mapped[str | None] = mapped_column(Text)
     confirmed_by: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("app_user.id"))
     confirmed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
@@ -332,9 +334,10 @@ class AgronomyDocumentChunk(Base, TimestampMixin):
     page_number: Mapped[int | None] = mapped_column(Integer)
     section: Mapped[str] = mapped_column(String(255), nullable=False)
     content: Mapped[str] = mapped_column(Text, nullable=False)
-    embedding: Mapped[list[float]] = mapped_column(
-        Vector(settings.vector_dimension), nullable=False
-    )
+    embedding: Mapped[list[float] | None] = mapped_column(Vector(settings.vector_dimension))
+    embedding_model: Mapped[str | None] = mapped_column(String(160))
+    gemini_embedding: Mapped[list[float] | None] = mapped_column(Vector(settings.vector_dimension))
+    gemini_embedding_model: Mapped[str | None] = mapped_column(String(160))
 
 
 class UsageRecord(Base, TimestampMixin):

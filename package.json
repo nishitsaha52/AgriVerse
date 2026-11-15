@@ -13,14 +13,14 @@
     }
   },
   "scripts": {
-    "dev": "pnpm --parallel --filter @agriverse/web dev",
-    "build": "pnpm --filter @agriverse/web build",
-    "lint": "pnpm --filter @agriverse/web lint",
-    "typecheck": "pnpm --filter @agriverse/web typecheck",
-    "test": "pnpm --filter @agriverse/web test",
-    "test:e2e": "pnpm --filter @agriverse/web test:e2e",
+    "dev": "corepack pnpm --parallel --filter @agriverse/web dev",
+    "build": "corepack pnpm --filter @agriverse/web build",
+    "lint": "corepack pnpm --filter @agriverse/web lint",
+    "typecheck": "corepack pnpm --filter @agriverse/web typecheck",
+    "test": "corepack pnpm --filter @agriverse/web test",
+    "test:e2e": "corepack pnpm --filter @agriverse/web test:e2e",
     "generate:openapi": "uv run --project apps/api python apps/api/scripts/export_openapi.py",
-    "generate:api": "pnpm generate:openapi && pnpm --filter @agriverse/api-client generate",
-    "check:api-drift": "pnpm generate:api && git diff --exit-code -- apps/api/openapi.json packages/api-client/src/generated/schema.d.ts"
+    "generate:api": "corepack pnpm generate:openapi && corepack pnpm --filter @agriverse/api-client generate",
+    "check:api-drift": "corepack pnpm generate:api && git diff --exit-code -- apps/api/openapi.json packages/api-client/src/generated/schema.d.ts"
   }
 }

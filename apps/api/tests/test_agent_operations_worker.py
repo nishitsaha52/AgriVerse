@@ -26,6 +26,7 @@ from agriverse.schemas import (
 )
 from agriverse.security import Principal
 from agriverse.services.ai import GateResult
+from agriverse.services.retrieval import EmbeddedText, StoredEmbeddings
 from agriverse.workers import process_scan
 from tests.fakes import FakeSession
 
@@ -86,7 +87,7 @@ async def test_agent_builds_authorized_field_context_and_records_usage(
     monkeypatch.setattr(
         agent.embedding_service,
         "embed_texts",
-        AsyncMock(return_value=[[0.0] * 1024]),
+        AsyncMock(return_value=[EmbeddedText([0.1] * 1024, "openai", "text-embedding-3-small")]),
     )
     monkeypatch.setattr(
         agent,
@@ -313,12 +314,17 @@ async def test_worker_rejects_invalid_and_processes_diagnosable_image(
     monkeypatch.setattr(
         workers.embedding_service,
         "embed_image",
-        AsyncMock(return_value=[0.0] * 1024),
+        AsyncMock(
+            return_value=StoredEmbeddings(
+                "leaf lesions",
+                openai=EmbeddedText([0.1] * 1024, "openai", "text-embedding-3-small"),
+            )
+        ),
     )
     monkeypatch.setattr(
         workers.embedding_service,
         "embed_texts",
-        AsyncMock(return_value=[[0.0] * 1024]),
+        AsyncMock(return_value=[EmbeddedText([0.1] * 1024, "openai", "text-embedding-3-small")]),
     )
     monkeypatch.setattr(workers, "search_similar_scans", AsyncMock(return_value=[]))
     monkeypatch.setattr(workers, "search_documents", AsyncMock(return_value=[]))

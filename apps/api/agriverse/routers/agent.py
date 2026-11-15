@@ -187,7 +187,7 @@ async def ask_agronomist(
         resource_type="agent_conversation",
         resource_id=conversation.id,
         after={
-            "provider": "openai-compatible",
+            "provider": metadata.get("provider", "unknown"),
             "model": metadata.get("model"),
             "response_id": metadata.get("response_id"),
             "usage": usage,

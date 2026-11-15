@@ -11,7 +11,16 @@ export default defineConfig({
     trace: "on-first-retry",
   },
   webServer: {
-    command: "corepack pnpm exec next dev -p 3101",
+    command: "corepack pnpm dev --port 3101",
+    env: {
+      APP_ENV: "production",
+      STAFF_PIN_LOGIN_ENABLED: "true",
+      KEYCLOAK_ISSUER_URL: "http://127.0.0.1:8080/realms/test",
+      KEYCLOAK_CLIENT_ID: "agriverse-e2e",
+      GOOGLE_CLIENT_ID: "",
+      MICROSOFT_CLIENT_ID: "",
+      NEXT_PUBLIC_API_URL: "http://127.0.0.1:8000/api/v1",
+    },
     url: "http://127.0.0.1:3101",
     reuseExistingServer: false,
     timeout: 120_000,

@@ -1,0 +1,41 @@
+{
+  "run_id": "731c0088-6972-43b9-bd36-42ee1682e201",
+  "started_utc": "2026-11-15T08:10:40.182821+00:00",
+  "updated_utc": "2026-11-15T08:10:40.893980+00:00",
+  "results": [
+    {
+      "service": "OTel",
+      "check": "OTLP traces export",
+      "status": "PASS",
+      "seconds": 0.01,
+      "http_status": 200,
+      "rejected": 0,
+      "scope": "collector acceptance; downstream persistence not queried"
+    },
+    {
+      "service": "OTel",
+      "check": "OTLP metrics export",
+      "status": "PASS",
+      "seconds": 0.0,
+      "http_status": 200,
+      "rejected": 0,
+      "scope": "collector acceptance; downstream persistence not queried"
+    },
+    {
+      "service": "OTel",
+      "check": "OTLP logs export",
+      "status": "PASS",
+      "seconds": 0.0,
+      "http_status": 200,
+      "rejected": 0,
+      "scope": "collector acceptance; downstream persistence not queried"
+    },
+    {
+      "service": "OTel",
+      "check": "application OTLP SDK trace exporter",
+      "status": "PASS",
+      "seconds": 0.3,
+      "sdk_export_result": "SUCCESS"
+    }
+  ]
+}

@@ -7,7 +7,9 @@ from unittest.mock import AsyncMock
 import httpx
 import pytest
 from fastapi import HTTPException
+from redis.exceptions import RedisError
 
+from agriverse.config import Settings
 from agriverse.routers.documents import semantically_chunk, validate_licence
 from agriverse.schemas import (
     Citation,
@@ -16,9 +18,10 @@ from agriverse.schemas import (
 )
 from agriverse.security import Principal
 from agriverse.services.ai import (
+    AnswerText,
     FieldContext,
     GateResult,
-    OpenAICompatibleProvider,
+    LLMProvider,
     RetrievedContext,
 )
 from agriverse.services.idempotency import (
@@ -27,6 +30,7 @@ from agriverse.services.idempotency import (
 )
 from agriverse.services.rate_limit import RateLimiter
 from agriverse.services.retrieval import (
+    EmbeddedText,
     EmbeddingService,
     _vector_literal,
     citations_from_document_rows,
@@ -37,7 +41,6 @@ from agriverse.services.safety import contains_prompt_injection
 from agriverse.services.weather import (
     CachedWeatherService,
     ForecastRead,
-    IMDProvider,
     OpenMeteoProvider,
     WeatherPoint,
 )
@@ -126,6 +129,7 @@ async def test_rate_limiter_enforces_user_org_and_daily_limits(
 @pytest.mark.asyncio
 async def test_open_meteo_normalizes_current_and_hourly(monkeypatch: pytest.MonkeyPatch) -> None:
     payload = {
+        "utc_offset_seconds": 19800,
         "current": {
             "time": "2026-07-31T10:00",
             "temperature_2m": 31,
@@ -160,67 +164,88 @@ async def test_open_meteo_normalizes_current_and_hourly(monkeypatch: pytest.Monk
     assert result.source == "open-meteo"
     assert result.current.temperature_c == 31
     assert len(result.forecast) == 1
+    assert result.current.observed_at == datetime(2026, 7, 31, 4, 30, tzinfo=UTC)
+    assert result.forecast[0].observed_at == datetime(2026, 7, 31, 5, 30, tzinfo=UTC)
 
 
-@pytest.mark.asyncio
-async def test_imd_adapter_and_cached_fallback(monkeypatch: pytest.MonkeyPatch) -> None:
+def weather_forecast() -> ForecastRead:
     now = datetime.now(UTC)
-    expected = ForecastRead(
-        source="gateway",
+    return ForecastRead(
+        source="open-meteo",
         fetched_at=now,
-        current=WeatherPoint(
-            observed_at=now,
-            temperature_c=25,
-            relative_humidity_pct=50,
-        ),
+        current=WeatherPoint(observed_at=now, temperature_c=25, relative_humidity_pct=50),
         alerts=[],
     )
 
-    class Client:
-        async def __aenter__(self) -> "Client":
-            return self
 
-        async def __aexit__(self, *args: object) -> None:
-            del args
-
-        async def get(self, *args: object, **kwargs: object) -> httpx.Response:
-            del args, kwargs
-            return httpx.Response(
-                200,
-                json=expected.model_dump(mode="json"),
-                request=httpx.Request("GET", "https://imd"),
-            )
-
-    from agriverse.services import weather
-
-    monkeypatch.setattr(weather.settings, "imd_api_base_url", "https://imd")
-    monkeypatch.setattr(httpx, "AsyncClient", lambda **kwargs: Client())
-    assert (await IMDProvider().current(1, 2)).source == "imd"
-
+@pytest.mark.asyncio
+async def test_weather_cache_uses_open_meteo_directly() -> None:
+    expected = weather_forecast()
     service = CachedWeatherService()
     service._redis.get = AsyncMock(return_value=expected.model_dump_json())
+    service._redis.set = AsyncMock()
+    service._provider.current = AsyncMock(return_value=expected)
     cached = await service.get_current(cache_region="KA:Mysuru", latitude=1, longitude=2)
-    assert cached.current.temperature_c == 25
+    assert cached == expected
+    service._provider.current.assert_not_called()
+    service._redis.get.assert_awaited_once_with("agriverse:weather:open-meteo:v2:ka:mysuru")
 
     service._redis.get = AsyncMock(return_value=None)
-    service._redis.set = AsyncMock()
-    service._imd.current = AsyncMock(side_effect=weather.WeatherUnavailableError())
-    service._fallback.current = AsyncMock(return_value=expected)
     fresh = await service.get_current(cache_region="KA:Mysuru", latitude=1, longitude=2)
     assert fresh == expected
+    service._provider.current.assert_awaited_once_with(1, 2)
+    assert service._redis.set.await_args.kwargs["ex"] == 600
     await service.close()
 
 
 @pytest.mark.asyncio
-async def test_retrieval_embedding_search_rerank_and_citations() -> None:
-    service = EmbeddingService()
-    service._client.embed = AsyncMock(return_value=SimpleNamespace(embeddings=[[0.1, 0.2]]))
-    vectors = await service.embed_texts(["rice"])
-    assert vectors == [[0.1, 0.2]]
-    rows = [{"content": "first"}, {"content": "second"}]
-    service._client.rerank = AsyncMock(
-        return_value=SimpleNamespace(results=[SimpleNamespace(index=1)])
+async def test_weather_still_fetches_when_redis_is_unavailable() -> None:
+    expected = weather_forecast()
+    service = CachedWeatherService()
+    service._redis.get = AsyncMock(side_effect=RedisError())
+    service._redis.set = AsyncMock(side_effect=RedisError())
+    service._provider.current = AsyncMock(return_value=expected)
+    result = await service.get_current(cache_region="KA:Mysuru", latitude=1, longitude=2)
+    assert result.source == "open-meteo"
+    service._provider.current.assert_awaited_once_with(1, 2)
+    await service.close()
+
+
+@pytest.mark.asyncio
+async def test_weather_provider_failure_is_not_cached() -> None:
+    service = CachedWeatherService()
+    service._redis.get = AsyncMock(return_value=None)
+    service._redis.set = AsyncMock()
+    request = httpx.Request("GET", "https://api.open-meteo.com/v1/forecast")
+    error = httpx.HTTPStatusError(
+        "Unavailable", request=request, response=httpx.Response(503, request=request)
     )
+    service._provider.current = AsyncMock(side_effect=error)
+    with pytest.raises(httpx.HTTPStatusError):
+        await service.get_current(cache_region="KA:Mysuru", latitude=1, longitude=2)
+    service._redis.set.assert_not_called()
+    await service.close()
+
+
+@pytest.mark.asyncio
+async def test_retrieval_embedding_search_rerank_and_citations(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    service = EmbeddingService(
+        Settings(_env_file=None, openai_api_key="test-openai", vector_dimension=2)
+    )
+    service._client.embeddings.create = AsyncMock(
+        return_value=SimpleNamespace(
+            data=[SimpleNamespace(index=0, embedding=[0.6, 0.8])],
+        )
+    )
+    vectors = await service.embed_texts(["rice"])
+    assert vectors[0].vector == [0.6, 0.8]
+    assert vectors[0].provider == "openai"
+    rows = [{"content": "first"}, {"content": "second"}]
+    from agriverse.services import retrieval
+
+    monkeypatch.setattr(retrieval.vision_provider, "rank_documents", AsyncMock(return_value=[1]))
     assert await service.rerank("query", rows, limit=1) == [{"content": "second"}]
     assert _vector_literal([0.125, -2.0]) == "[0.125,-2]"
 
@@ -228,7 +253,7 @@ async def test_retrieval_embedding_search_rerank_and_citations() -> None:
     similar = await search_similar_scans(
         scan_db,
         organization_id=uuid.uuid4(),
-        embedding=[0.1],
+        embedding=EmbeddedText([0.1], "openai", "text-embedding-3-small"),
     )
     assert similar[0]["confirmed_dx"] == "rust"
 
@@ -247,7 +272,7 @@ async def test_retrieval_embedding_search_rerank_and_citations() -> None:
     document_db = FakeSession(execute_values=[[document_row]])
     found = await search_documents(
         document_db,
-        query_embedding=[0.2],
+        query_embedding=EmbeddedText([0.2], "openai", "text-embedding-3-small"),
         agro_climatic_zone="zone",
     )
     citation = citations_from_document_rows(found)[0]
@@ -256,8 +281,8 @@ async def test_retrieval_embedding_search_rerank_and_citations() -> None:
 
 
 @pytest.mark.asyncio
-async def test_openai_compatible_provider_structured_paths() -> None:
-    provider = OpenAICompatibleProvider()
+async def test_direct_provider_structured_paths() -> None:
+    provider = LLMProvider(Settings(_env_file=None, openai_api_key="test-openai"))
     diagnosis = DiagnosisResult(
         image_is_diagnosable=True,
         primary=PrimaryCondition(
@@ -280,11 +305,11 @@ async def test_openai_compatible_provider_structured_paths() -> None:
         id="resp_2",
         model="agent",
         usage=SimpleNamespace(model_dump=lambda: {"total_tokens": 8}),
-        output_text="Inspect nearby plants.",
+        output_parsed=AnswerText(answer="Inspect nearby plants."),
     )
     provider._client = SimpleNamespace(
         responses=SimpleNamespace(
-            parse=AsyncMock(side_effect=[gate_response, diagnosis_response]),
+            parse=AsyncMock(side_effect=[gate_response, diagnosis_response, answer_response]),
             create=AsyncMock(return_value=answer_response),
         )
     )

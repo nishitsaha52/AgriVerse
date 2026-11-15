@@ -55,6 +55,9 @@ async def set_tenant_context(db: AsyncSession, organization_id: uuid.UUID) -> No
         text("SELECT set_config('app.org_id', :org_id, true)"),
         {"org_id": str(organization_id)},
     )
+    # SET LOCAL ends at commit/rollback. The session's after_begin hook restores
+    # this context before any query in the next transaction (including refresh).
+    db.info["organization_id"] = organization_id
 
 
 async def get_current_principal(

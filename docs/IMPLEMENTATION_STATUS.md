@@ -1,6 +1,6 @@
 # Implementation status
 
-Updated: 2026-07-31
+Updated: 2026-11-15
 
 ## Delivered
 
@@ -13,13 +13,16 @@ Updated: 2026-07-31
   idempotency, usage, and audit records.
 - Farmer invitation/phone/PIN authentication, progressive lockout, rotating
   refresh sessions with replay response, logout revocation, field-agent PIN
-  reset auditing, and Google/Microsoft staff OIDC.
+  reset auditing, and Keycloak/Google/Microsoft staff OIDC.
+- Optional staff OIDC in all environments; production phone/PIN staff access
+  preserves membership, active-account, and lockout checks, with an explicit
+  `STAFF_PIN_LOGIN_ENABLED` switch for OIDC-only deployments.
 - Farm/field CRUD with soft deletion; soil history, sourced/versioned fertility
-  and crop rankings; IMD-gateway/Open-Meteo weather normalization and alerts.
+  and crop rankings; Open-Meteo weather normalization and application-generated alerts.
 - Safe asynchronous image upload and processing, structured/cited diagnosis,
   duplicate reuse, retrieval, dosage controls, feedback, prioritized human
   review, and confirmed-only case promotion.
-- Licensed document ingestion, semantic chunking, 1024-dimensional Voyage
+- Licensed document ingestion, semantic chunking, separate 1024-dimensional OpenAI/Gemini
   embeddings, pgvector HNSW search, SQL region/tier filtering, reranking, and
   prompt-injection screening.
 - Farmer dashboard, field setup, soil workflow, weather, scan polling,
@@ -32,12 +35,11 @@ Updated: 2026-07-31
 
 - Ruff formatting and lint.
 - Strict mypy.
-- 47 API tests passing, 2 infrastructure tests skipped without explicit
-  infrastructure opt-in, and 85% application coverage.
+- 99 API tests passing with 86.81% coverage; 2 infrastructure tests require explicit opt-in.
 - Web TypeScript and ESLint.
-- Vitest.
+- Vitest (11 tests).
 - Next.js production build.
-- Playwright Pixel 7 smoke journey.
+- Playwright Pixel 7 smoke journeys (3 tests), including the Keycloak redirect.
 - Deterministic OpenAPI and generated TypeScript schema.
 
 ## Rollout gates requiring the production environment
@@ -47,10 +49,12 @@ These are operational acceptance gates rather than missing application code:
 1. Run the integration tests against a disposable database/Redis/MinIO namespace
    on `wisdom`; never point destructive test fixtures at production data.
 2. Configure MinIO browser CORS and its public TLS S3 endpoint.
-3. Populate Infisical values, provider OIDC redirect URIs, LiteLLM aliases,
-   Voyage credentials, and the normalized IMD gateway contract.
-4. Resolve the currently unhealthy `langfuse-web` service before making
-   Langfuse a required telemetry destination.
+3. Populate environment secrets, direct OpenAI/Gemini API keys, provider OIDC
+   redirect URIs, and the Open-Meteo configuration. Apply the provider
+   embedding migration and run explicit reindexing for existing retrieval data.
+4. Verify Langfuse trace delivery through a configured collector route or direct
+   exporter. The dashboard URL is `https://wisdom-dev.local/langfuse/`; setting
+   the URL and project keys alone does not wire ingestion.
 5. Obtain and record agronomist approval for the v1 index weights. Government
    and TNAU threshold sources are embedded and returned by the API, but a human
    domain owner must approve production advisory policy.
